@@ -22,4 +22,3 @@ export async function GET() {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
-

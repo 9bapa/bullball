@@ -66,7 +66,7 @@ export default function ProfitBallDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/profit-ball/stats')
+        const response = await fetch('/api/bullball/stats')
         const data = await response.json()
         setMetrics(data)
       } catch {}
@@ -74,7 +74,7 @@ export default function ProfitBallDashboard() {
 
     const fetchFeed = async () => {
       try {
-        const response = await fetch('/api/profit-ball/feed')
+        const response = await fetch('/api/bullball/feed')
         const data = await response.json()
         setActivities(data.map((a: any) => ({ ...a, timestamp: new Date(a.timestamp) })))
       } catch {}
@@ -82,7 +82,7 @@ export default function ProfitBallDashboard() {
 
     const fetchGifts = async () => {
       try {
-        const response = await fetch('/api/profit-ball/gifts')
+        const response = await fetch('/api/bullball/gifts')
         const data = await response.json()
         setGiftHistory(data.map((g: any) => ({ ...g, timestamp: new Date(g.timestamp) })))
       } catch {}
@@ -90,7 +90,7 @@ export default function ProfitBallDashboard() {
 
     const fetchDevWallet = async () => {
       try {
-        const response = await fetch('/api/profit-ball/dev-wallet')
+        const response = await fetch('/api/bullball/dev-wallet')
         const data = await response.json()
         setDevWallet(data)
       } catch {}
@@ -98,7 +98,7 @@ export default function ProfitBallDashboard() {
 
     const fetchTrade = async () => {
       try {
-        const response = await fetch('/api/profit-ball/trade')
+        const response = await fetch('/api/bullball/trade')
         const data = await response.json()
         setTradeGoal(data.current_threshold || 0)
         setTradeCount(data.current_count || 0)
@@ -324,7 +324,7 @@ export default function ProfitBallDashboard() {
                 <p className="text-4xl font-black font-mono text-purple-300 tracking-tight">
                   {formatNumber(metrics.tokensBought)}
                 </p>
-                <p className="text-sm text-gray-400 font-medium">P-BALL tokens</p>
+                <p className="text-sm text-gray-400 font-medium">BULLBALL tokens</p>
                 <Separator className="bg-purple-500/20" />
                 <div className="flex items-center text-sm text-purple-400 font-semibold">
                   <Activity className="w-4 h-4 mr-2" />
