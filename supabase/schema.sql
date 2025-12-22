@@ -1,0 +1,140 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reward_mode') THEN
+    CREATE TYPE reward_mode AS ENUM ('address','last-trader');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'liquidity_status') THEN
+    CREATE TYPE liquidity_status AS ENUM ('planned','executed','skipped','failed');
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS profit_admin_settings (
+  id INTEGER PRIMARY KEY,
+  payout_address TEXT,
+  forward_creator_fees BOOLEAN DEFAULT FALSE,
+  enable_buybacks BOOLEAN DEFAULT TRUE,
+  enable_gifts BOOLEAN DEFAULT FALSE,
+  reward_mode reward_mode DEFAULT 'address',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO profit_admin_settings (id)
+VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS buybacks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mint TEXT NOT NULL,
+  pool TEXT,
+  signature TEXT UNIQUE NOT NULL,
+  amount_sol NUMERIC(38,9) CHECK (amount_sol >= 0),
+  amount_tokens NUMERIC(38,0) CHECK (amount_tokens >= 0),
+  denominated_in_sol BOOLEAN NOT NULL,
+  slippage INTEGER,
+  priority_fee NUMERIC(38,9),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_buybacks_mint ON buybacks (mint);
+CREATE INDEX IF NOT EXISTS idx_buybacks_created_at ON buybacks (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS profit_liquidity_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mint TEXT,
+  pool_key TEXT,
+  sol_amount NUMERIC(38,9) CHECK (sol_amount >= 0),
+  base_amount NUMERIC(38,0) CHECK (base_amount >= 0),
+  status liquidity_status DEFAULT 'planned',
+  fee_tx TEXT,
+  buy_tx TEXT,
+  deposit_tx TEXT,
+  burn_tx TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (deposit_tx),
+  UNIQUE (burn_tx)
+);
+
+CREATE INDEX IF NOT EXISTS idx_liquidity_mint ON profit_liquidity_events (mint);
+CREATE INDEX IF NOT EXISTS idx_liquidity_created_at ON profit_liquidity_events (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS burns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lp_mint TEXT,
+  pool_key TEXT,
+  amount_lp NUMERIC(38,0) CHECK (amount_lp >= 0),
+  signature TEXT UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_burns_created_at ON burns (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gifts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  to_address TEXT NOT NULL,
+  amount_sol NUMERIC(38,9) CHECK (amount_sol > 0),
+  signature TEXT UNIQUE,
+  mode reward_mode NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gifts_to ON gifts (to_address);
+CREATE INDEX IF NOT EXISTS idx_gifts_created_at ON gifts (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS developer_wallet_stats (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  address TEXT NOT NULL,
+  balance_sol NUMERIC(38,9) CHECK (balance_sol >= 0),
+  total_received_sol NUMERIC(38,9) CHECK (total_received_sol >= 0),
+  total_sent_sol NUMERIC(38,9) CHECK (total_sent_sol >= 0),
+  captured_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dev_wallet_stats_address ON developer_wallet_stats (address);
+CREATE INDEX IF NOT EXISTS idx_dev_wallet_stats_captured ON developer_wallet_stats (captured_at DESC);
+
+CREATE TABLE IF NOT EXISTS profit_metrics (
+  id INTEGER PRIMARY KEY,
+  creator_fees_collected NUMERIC(38,9) DEFAULT 0,
+  tokens_bought NUMERIC(38,0) DEFAULT 0,
+  gifts_sent_sol NUMERIC(38,9) DEFAULT 0,
+  last_update TIMESTAMPTZ DEFAULT now(),
+  total_cycles INTEGER DEFAULT 0,
+  current_sol_price NUMERIC(38,9) DEFAULT 0,
+  next_cycle_in INTEGER DEFAULT 120
+);
+
+INSERT INTO profit_metrics (id)
+VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS profit_last_trader (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  address TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_last_trader_updated ON profit_last_trader (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_last_trader_address ON profit_last_trader (address);
+
+CREATE TABLE IF NOT EXISTS profit_trade_state (
+  id INTEGER PRIMARY KEY,
+  current_threshold INTEGER CHECK (current_threshold >= 1),
+  current_count INTEGER DEFAULT 0 CHECK (current_count >= 0),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO profit_trade_state (id, current_threshold, current_count)
+VALUES (1, floor(30 + (random() * 271))::int, 0)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS ops_limits (
+  key TEXT PRIMARY KEY,
+  window_seconds INTEGER NOT NULL DEFAULT 30 CHECK (window_seconds >= 1),
+  last_executed TIMESTAMPTZ
+);
