@@ -3,7 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    if (!supabaseAdmin) return NextResponse.json([])
+    if (!supabaseAdmin) {
+      console.log('GET /api/bullball/feed []')
+      return NextResponse.json([])
+    }
     const { data: liq } = await supabaseAdmin
       .from('profit_liquidity_events')
       .select('id,fee_tx,deposit_tx,burn_tx,created_at')
@@ -25,8 +28,11 @@ export async function GET() {
       items.push({ id: g.id + '-gift', type: 'gift', description: 'Gift sent to trader', timestamp: g.created_at })
     }
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    return NextResponse.json(items.slice(0, 10))
+    const payload = items.slice(0, 10)
+    console.log('GET /api/bullball/feed', { count: payload.length })
+    return NextResponse.json(payload)
   } catch (e) {
+    console.error('GET /api/bullball/feed error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

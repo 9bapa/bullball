@@ -26,12 +26,15 @@ export async function POST() {
     const walletPubkeyStr = process.env.SOLANA_PUBLIC_KEY!
     const walletPubkey = new PublicKey(walletPubkeyStr)
     const balanceBefore = await connection.getBalance(walletPubkey, 'confirmed')
+    console.log('run-cycle wallet balance before', { wallet: walletPubkeyStr, lamports: balanceBefore })
 
     const feeSig = await collectCreatorFee()
     const balanceAfterClaim = await connection.getBalance(walletPubkey, 'confirmed')
+    console.log('run-cycle wallet balance after claim', { lamports: balanceAfterClaim })
 
     const deltaLamports = Math.max(0, balanceAfterClaim - balanceBefore)
     const deltaSol = deltaLamports / LAMPORTS_PER_SOL
+    console.log('run-cycle delta', { deltaLamports, deltaSol })
     const platformAddress = process.env.PLATFORM_WALLET
     let platformSig: string | null = null
     let remainingSol = deltaSol
@@ -39,12 +42,16 @@ export async function POST() {
       const platformSol = deltaSol * 0.1
       remainingSol = Math.max(0, deltaSol - platformSol)
       platformSig = await transferSol(platformAddress, platformSol)
+      console.log('run-cycle platform fee', { platformAddress, platformSol, platformSig })
     }
     const buySol = remainingSol
     const liquiditySol = 0
+    console.log('run-cycle allocations', { buySol, liquiditySol })
 
     let buySig: string | null = null
-    if (buySol > 0) {
+    const MIN_BUY_AMOUNT_SOL = 0.001 // Minimum 0.001 SOL to buy
+    if (buySol > MIN_BUY_AMOUNT_SOL) {
+      console.log('run-cycle buy check passed', { buySol, minRequired: MIN_BUY_AMOUNT_SOL })
       if (supabaseAdmin) {
         const { data: limitBuy } = await supabaseAdmin
           .from('ops_limits')
@@ -58,11 +65,15 @@ export async function POST() {
           const r = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005 })
           buySig = r.signature
           await supabaseAdmin.from('ops_limits').upsert({ key: 'buy', window_seconds: Math.floor(windowMs / 1000), last_executed: new Date().toISOString() })
+        } else {
+          console.log('run-cycle buy rate limited', { last, now, windowMs })
         }
       } else {
         const r = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005 })
         buySig = r.signature
       }
+    } else {
+      console.log('run-cycle buy amount too low', { buySol, minRequired: MIN_BUY_AMOUNT_SOL })
     }
 
     let depositSig: string | null = null
@@ -151,8 +162,11 @@ export async function POST() {
       })
     }
 
-    return NextResponse.json({ feeSig, buySig, depositSig, burnSig, liquiditySol, rewardSig, deltaSol, platformSig })
+    const payload = { feeSig, buySig, depositSig, burnSig, liquiditySol, rewardSig, deltaSol, platformSig }
+    console.log('POST /api/bullball/run-cycle', payload)
+    return NextResponse.json(payload)
   } catch (e) {
+    console.error('POST /api/bullball/run-cycle error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

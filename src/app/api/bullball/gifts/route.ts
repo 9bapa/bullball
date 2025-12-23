@@ -3,7 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    if (!supabaseAdmin) return NextResponse.json([])
+    if (!supabaseAdmin) {
+      console.log('GET /api/bullball/gifts []')
+      return NextResponse.json([])
+    }
     const { data } = await supabaseAdmin
       .from('gifts')
       .select('id,to_address,amount_sol,signature,created_at')
@@ -17,8 +20,10 @@ export async function GET() {
       timestamp: g.created_at,
       txHash: g.signature || ''
     }))
+    console.log('GET /api/bullball/gifts', { count: items.length })
     return NextResponse.json(items)
   } catch (e) {
+    console.error('GET /api/bullball/gifts error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

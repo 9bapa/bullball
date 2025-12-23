@@ -180,6 +180,32 @@ CREATE TABLE IF NOT EXISTS liquidity_history (
 CREATE INDEX IF NOT EXISTS idx_liquidity_history_pool ON liquidity_history (pool_key);
 CREATE INDEX IF NOT EXISTS idx_liquidity_history_created ON liquidity_history (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS listener_status (
+  id INTEGER PRIMARY KEY,
+  subscribed_mint TEXT,
+  last_heartbeat TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO listener_status (id)
+VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.listener_status ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='listener_status' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.listener_status FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='listener_status' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.listener_status FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='listener_status' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.listener_status FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='listener_status' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.listener_status FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
 ALTER TABLE public.profit_admin_settings ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_admin_settings' AND policyname='select_public') THEN

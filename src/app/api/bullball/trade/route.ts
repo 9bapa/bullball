@@ -3,22 +3,36 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    if (!supabaseAdmin) return NextResponse.json({ current_threshold: 0, current_count: 0 })
+    if (!supabaseAdmin) {
+      const payload = { current_threshold: 0, current_count: 0 }
+      console.log('GET /api/bullball/trade', payload)
+      return NextResponse.json(payload)
+    }
     const { data } = await supabaseAdmin
       .from('profit_trade_state')
       .select('current_threshold,current_count,updated_at')
       .eq('id', 1)
       .maybeSingle()
-    if (!data) return NextResponse.json({ current_threshold: 0, current_count: 0 })
-    return NextResponse.json({ current_threshold: data.current_threshold, current_count: data.current_count })
+    if (!data) {
+      const payload = { current_threshold: 0, current_count: 0 }
+      console.log('GET /api/bullball/trade', payload)
+      return NextResponse.json(payload)
+    }
+    const payload = { current_threshold: data.current_threshold, current_count: data.current_count }
+    console.log('GET /api/bullball/trade', payload)
+    return NextResponse.json(payload)
   } catch (e) {
+    console.error('GET /api/bullball/trade error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
 
 export async function POST() {
   try {
-    if (!supabaseAdmin) return NextResponse.json({})
+    if (!supabaseAdmin) {
+      console.log('POST /api/bullball/trade {}')
+      return NextResponse.json({})
+    }
     const { data } = await supabaseAdmin
       .from('profit_trade_state')
       .select('current_threshold,current_count')
@@ -28,8 +42,11 @@ export async function POST() {
     await supabaseAdmin
       .from('profit_trade_state')
       .upsert({ id: 1, current_threshold: data?.current_threshold || 30, current_count: count, updated_at: new Date().toISOString() })
-    return NextResponse.json({ current_count: count, current_threshold: data?.current_threshold || 30 })
+    const payload = { current_count: count, current_threshold: data?.current_threshold || 30 }
+    console.log('POST /api/bullball/trade', payload)
+    return NextResponse.json(payload)
   } catch (e) {
+    console.error('POST /api/bullball/trade error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

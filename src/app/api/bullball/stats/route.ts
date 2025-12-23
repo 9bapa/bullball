@@ -13,13 +13,19 @@ export async function GET() {
       currentSolPrice: 0,
     }
 
-    if (!supabase) return NextResponse.json(defaultMetrics)
+    if (!supabase) {
+      console.log('GET /api/bullball/stats', defaultMetrics)
+      return NextResponse.json(defaultMetrics)
+    }
 
     const { data: metricsRow } = await supabase.from('profit_metrics').select('*').limit(1).single()
-    if (!metricsRow) return NextResponse.json(defaultMetrics)
+    if (!metricsRow) {
+      console.log('GET /api/bullball/stats default')
+      return NextResponse.json(defaultMetrics)
+    }
 
     const { creator_fees_collected, tokens_bought, gifts_sent_sol, last_update, total_cycles, current_sol_price, next_cycle_in } = metricsRow
-    return NextResponse.json({
+    const payload = {
       creatorFeesCollected: creator_fees_collected ?? 0,
       tokensBought: tokens_bought ?? 0,
       giftsSentToTraders: gifts_sent_sol ?? 0,
@@ -27,8 +33,11 @@ export async function GET() {
       nextCycleIn: next_cycle_in ?? 120,
       totalProfitCycles: total_cycles ?? 0,
       currentSolPrice: current_sol_price ?? 0,
-    })
+    }
+    console.log('GET /api/bullball/stats', payload)
+    return NextResponse.json(payload)
   } catch (e) {
+    console.error('GET /api/bullball/stats error', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

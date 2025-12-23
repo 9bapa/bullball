@@ -12,6 +12,7 @@ export const depositAndBurnLp = async ({ poolKey, quoteAmountSol, slippage = 3 }
   const onlineSdk = new OnlinePumpAmmSdk(connection)
   const user = signer.publicKey
   const poolPubkey = new PublicKey(poolKey)
+  console.log('pumpswap deposit start', { poolKey, quoteAmountSol, slippage })
 
   const liquidityState = await onlineSdk.liquiditySolanaState(poolPubkey, user)
   const quoteBn = new BN(BigInt(Math.round(quoteAmountSol * LAMPORTS_PER_SOL)).toString())
@@ -22,6 +23,7 @@ export const depositAndBurnLp = async ({ poolKey, quoteAmountSol, slippage = 3 }
   const tx1 = new VersionedTransaction(msg1)
   tx1.sign([signer])
   const depositSig = await connection.sendTransaction(tx1, { maxRetries: 3, preflightCommitment: 'confirmed' })
+  console.log('pumpswap deposit sent', { depositSig })
 
   const lpMint = liquidityState.pool.lpMint
   const lpAta = await getAssociatedTokenAddress(lpMint, user)
@@ -38,6 +40,7 @@ export const depositAndBurnLp = async ({ poolKey, quoteAmountSol, slippage = 3 }
     const tx2 = new VersionedTransaction(msg2)
     tx2.sign([signer])
     burnSig = await connection.sendTransaction(tx2, { maxRetries: 3, preflightCommitment: 'confirmed' })
+    console.log('pumpswap burn sent', { burnSig, lpAmount: Number(lpAmount) })
   }
 
   if (supabaseAdmin) {
@@ -53,6 +56,7 @@ export const depositAndBurnLp = async ({ poolKey, quoteAmountSol, slippage = 3 }
       burn_sig: burnSig,
       created_at: new Date().toISOString(),
     })
+    console.log('pumpswap history inserted', { mint, poolKey, depositSig, burnSig })
   }
 
   return { depositSig, burnSig, base, lpToken }
