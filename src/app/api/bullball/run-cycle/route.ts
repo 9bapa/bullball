@@ -7,8 +7,8 @@ import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 
 export async function POST() {
   try {
-    const mint = process.env.PROFITBALL_MINT
-    if (!mint) return NextResponse.json({ error: 'Missing PROFITBALL_MINT' }, { status: 400 })
+    const mint = process.env.BULLBALL_MINT
+    if (!mint) return NextResponse.json({ error: 'Missing BULLBALL_MINT' }, { status: 400 })
 
     if (supabaseAdmin) {
       const { data: limitCycle } = await supabaseAdmin
@@ -32,8 +32,16 @@ export async function POST() {
 
     const deltaLamports = Math.max(0, balanceAfterClaim - balanceBefore)
     const deltaSol = deltaLamports / LAMPORTS_PER_SOL
-    const buySol = deltaSol * 0.5
-    const liquiditySol = deltaSol - buySol
+    const platformAddress = process.env.PLATFORM_WALLET
+    let platformSig: string | null = null
+    let remainingSol = deltaSol
+    if (platformAddress && deltaSol > 0) {
+      const platformSol = deltaSol * 0.1
+      remainingSol = Math.max(0, deltaSol - platformSol)
+      platformSig = await transferSol(platformAddress, platformSol)
+    }
+    const buySol = remainingSol
+    const liquiditySol = 0
 
     let buySig: string | null = null
     if (buySol > 0) {
@@ -143,7 +151,7 @@ export async function POST() {
       })
     }
 
-    return NextResponse.json({ feeSig, buySig, depositSig, burnSig, liquiditySol, rewardSig, deltaSol })
+    return NextResponse.json({ feeSig, buySig, depositSig, burnSig, liquiditySol, rewardSig, deltaSol, platformSig })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

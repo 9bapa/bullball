@@ -698,9 +698,9 @@ export default function ProfitBallDashboard() {
                   <p className="text-2xl font-bold font-mono text-blue-300">
                     {devWallet.balance.toFixed(4)} SOL
                   </p>
-                  <p className="text-sm text-gray-400">
+                  {/* <p className="text-sm text-gray-400">
                     ${(devWallet.balance * metrics.currentSolPrice).toFixed(2)} USD
-                  </p>
+                  </p> */}
                 </div>
               </div>
               <div className="space-y-4">

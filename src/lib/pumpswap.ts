@@ -41,7 +41,7 @@ export const depositAndBurnLp = async ({ poolKey, quoteAmountSol, slippage = 3 }
   }
 
   if (supabaseAdmin) {
-    const mint = process.env.PROFITBALL_MINT || null
+    const mint = process.env.BULLBALL_MINT || null
     await supabaseAdmin.from('liquidity_history').insert({
       mint,
       pool_key: poolKey,
