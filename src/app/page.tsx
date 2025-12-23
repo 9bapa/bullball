@@ -140,7 +140,7 @@ export default function ProfitBallDashboard() {
           console.log('Cycle check:', data)
           
           if (data.shouldRun) {
-            console.log('Triggering profit cycle...')
+            console.log('Triggering bull cycle...')
             const triggerResponse = await fetch('/api/bullball/cycle-check', { method: 'POST' })
             if (triggerResponse.ok) {
               const result = await triggerResponse.json()
@@ -383,7 +383,7 @@ export default function ProfitBallDashboard() {
                 <div className="flex items-center space-x-3">
                   <Clock className="w-6 h-6 text-emerald-400" />
                   <div>
-                    <p className="text-sm text-gray-300">Next Profit Cycle</p>
+                    <p className="text-sm text-gray-300">Next Bull Cycle</p>
                     <p className="text-2xl font-bold font-mono text-emerald-400">{formatTime(metrics.nextCycleIn)}</p>
                   </div>
                 </div>

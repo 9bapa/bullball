@@ -24,19 +24,13 @@ export async function GET() {
       return NextResponse.json(defaultMetrics)
     }
 
-    // Calculate actual next cycle time based on ops_limits
-    const { data: cycleLimit } = await supabase
-      .from('ops_limits')
-      .select('last_executed,window_seconds')
-      .eq('key', 'run-cycle')
-      .maybeSingle()
-    
+    // Calculate next cycle time based on profit_metrics last_update + next_cycle_in
     let nextCycleIn = 120
-    if (cycleLimit?.last_executed && cycleLimit?.window_seconds) {
-      const lastExecuted = new Date(cycleLimit.last_executed).getTime()
-      const windowMs = cycleLimit.window_seconds * 1000
+    if (metricsRow?.last_update && metricsRow?.next_cycle_in) {
+      const lastUpdate = new Date(metricsRow.last_update).getTime()
+      const cycleIntervalMs = metricsRow.next_cycle_in * 1000
       const now = Date.now()
-      const timeUntilNext = Math.max(0, Math.ceil((lastExecuted + windowMs - now) / 1000))
+      const timeUntilNext = Math.max(0, Math.ceil((lastUpdate + cycleIntervalMs - now) / 1000))
       nextCycleIn = timeUntilNext
     }
 

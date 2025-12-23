@@ -45,17 +45,28 @@ export async function GET() {
 
 export async function POST() {
   try {
+    const url = `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/bullball/run-cycle`
+    console.log('POST /api/bullball/cycle-check fetching', { url })
+
     // Trigger the cycle run
-    const response = await fetch(`${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/bullball/run-cycle`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     })
-    
+
+    console.log('POST /api/bullball/cycle-check response', { ok: response.ok, status: response.status })
+
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('POST /api/bullball/cycle-check bad response', { status: response.status, text })
+      throw new Error(`Fetch failed: ${response.status} ${text}`)
+    }
+
     const result = await response.json()
     console.log('POST /api/bullball/cycle-check triggered cycle', result)
-    
-    return NextResponse.json({ 
-      triggered: true, 
+
+    return NextResponse.json({
+      triggered: true,
       result,
       timestamp: new Date().toISOString()
     })

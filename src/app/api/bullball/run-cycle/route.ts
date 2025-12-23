@@ -18,7 +18,7 @@ export async function POST() {
         .maybeSingle()
       const now = Date.now()
       const last = limitCycle?.last_executed ? new Date(limitCycle.last_executed).getTime() : 0
-      const windowMs = ((process.env.RATE_LIMIT_CYCLE_SECONDS && parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS)) || limitCycle?.window_seconds || 30) * 1000
+      const windowMs = ((process.env.RATE_LIMIT_CYCLE_SECONDS && parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS)) || limitCycle?.window_seconds || 120) * 1000
       if (last && now - last < windowMs) return NextResponse.json({ error: 'Rate limited' }, { status: 429 })
     }
 
@@ -206,7 +206,7 @@ export async function POST() {
       
       for (const op of operationsPerformed) {
         const windowSeconds = parseInt(
-          op === 'run-cycle' ? (process.env.RATE_LIMIT_CYCLE_SECONDS || '30') :
+          op === 'run-cycle' ? (process.env.RATE_LIMIT_CYCLE_SECONDS || '120') :
           op === 'buy' ? (process.env.RATE_LIMIT_BUY_SECONDS || '30') :
           (process.env.RATE_LIMIT_DEPOSIT_SECONDS || '30')
         )
@@ -220,20 +220,17 @@ export async function POST() {
       console.log('run-cycle no successful operations, skipping database updates')
     }
 
-    // Only update profit_metrics if we have successful operations
-    if (supabaseAdmin && (feeSig || buySig || depositSig || rewardSig)) {
-      // Calculate next cycle time based on actual timing
-      const cycleWindowSeconds = parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS || '30')
-      const nextCycleTime = cycleWindowSeconds // Next cycle is after the rate limit window
-      
+    // Always update profit_metrics last_update and next_cycle_in
+    if (supabaseAdmin) {
+      const cycleWindowSeconds = parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS || '120')
       await supabaseAdmin.from('profit_metrics').upsert({
         id: 1,
-        creator_fees_collected: (deltaSol || 0),
+        creator_fees_collected: (feeSig ? (deltaSol || 0) : undefined),
         tokens_bought: null,
-        gifts_sent_sol: rewardSolUsed || 0,
+        gifts_sent_sol: (rewardSig ? rewardSolUsed || 0 : undefined),
         last_update: new Date().toISOString(),
         total_cycles: supabaseAdmin.rpc ? null : null,
-        next_cycle_in: nextCycleTime,
+        next_cycle_in: cycleWindowSeconds,
       })
     }
 
