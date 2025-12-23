@@ -369,40 +369,24 @@ export default function ProfitBallDashboard() {
           </h3>
           <div className="md:clear-both"></div>
         </div>
-        <div className="mb-12 flex justify-center">
-          <div className="col-span-3 text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
-            <p className="text-xl md:text-2xl text-gray-300 font-light leading-relaxed mb-2">Contract Address</p>
-            <a
-              href="https://pump.fun/coin/HjsE49hff2qYXBajQDEPELZLftsbzUyZb3ff5s8Gpump"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-2xl md:text-3xl text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
-            >
-              HjsE4...8Gpump
-            </a>
-          </div>
-        </div>
-
-        <div className="mb-12 flex justify-center">
-          <div className="col-span-3 text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
-            <p className="text-xl md:text-2xl text-gray-300 font-light leading-relaxed mb-2">Contract Address</p>
-            <a
-              href="https://pump.fun/coin/HjsE49hff2qYXBajQDEPELZLftsbzUyZb3ff5s8Gpump"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-2xl md:text-3xl text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
-            >
-              HjsE4...8Gpump
-            </a>
-          </div>
-        </div>
 
         <div className="mb-12 max-w-5xl mx-auto text-centr">
           <p className="text-xl md:text-2xl text-gray-300 font-light leading-relaxed mt-3 text-center">
             Every 2 minutes: <span className="text-emerald-400 font-semibold">Claim Fees</span> → <span className="text-purple-400 font-semibold">Buy Tokens</span> → <span className="text-blue-400 font-semibold">Add Liquidity</span> → <span className="text-red-400 font-semibold">Burn LP</span> → <span className="text-orange-400 font-semibold">Share Profits</span>
           </p>
           </div>
-
+        <div className="mb-12 flex justify-center">
+          <div className="col-span-3 text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
+            <a
+              href="https://pump.fun/coin/HjsE49hff2qYXBajQDEPELZLftsbzUyZb3ff5s8Gpump"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-2xl md:text-3xl text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
+            >
+              HjsE4...8Gpump
+            </a>
+          </div>
+        </div>
         {/* Cycle Timer */}
         <Card className="mb-8 bg-gradient-to-r from-emerald-500/10 to-purple-500/10 border-emerald-500/30 backdrop-blur-sm">
           <CardContent className="p-6">
