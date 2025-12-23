@@ -7,8 +7,8 @@ export const getConnection = () => {
 }
 
 export const getSigner = () => {
-  const secret = process.env.SOLANA_PRIVATE_KEY_BASE58
-  if (!secret) throw new Error('Missing SOLANA_PRIVATE_KEY_BASE58')
+  const secret = process.env.DEV_WALLET || process.env.SOLANA_PRIVATE_KEY_BASE58
+  if (!secret) throw new Error('Missing DEV_WALLET or SOLANA_PRIVATE_KEY_BASE58')
   return Keypair.fromSecretKey(bs58.decode(secret))
 }
 
@@ -34,4 +34,3 @@ export const transferSol = async (to: string, amountSol: number) => {
   await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed')
   return sig
 }
-
