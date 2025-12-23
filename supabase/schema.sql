@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS profit_admin_settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-INSERT INTO profit_admin_settings (id)
-VALUES (1)
+INSERT INTO profit_admin_settings (id, payout_address, forward_creator_fees, enable_buybacks, enable_gifts, reward_mode)
+VALUES (1, '', FALSE, TRUE, FALSE, 'address')
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS buybacks (
@@ -179,3 +179,211 @@ CREATE TABLE IF NOT EXISTS liquidity_history (
 
 CREATE INDEX IF NOT EXISTS idx_liquidity_history_pool ON liquidity_history (pool_key);
 CREATE INDEX IF NOT EXISTS idx_liquidity_history_created ON liquidity_history (created_at DESC);
+
+ALTER TABLE public.profit_admin_settings ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_admin_settings' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.profit_admin_settings FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_admin_settings' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.profit_admin_settings FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_admin_settings' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.profit_admin_settings FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_admin_settings' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.profit_admin_settings FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.buybacks ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='buybacks' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.buybacks FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='buybacks' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.buybacks FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='buybacks' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.buybacks FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='buybacks' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.buybacks FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.profit_liquidity_events ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_liquidity_events' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.profit_liquidity_events FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_liquidity_events' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.profit_liquidity_events FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_liquidity_events' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.profit_liquidity_events FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_liquidity_events' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.profit_liquidity_events FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.burns ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='burns' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.burns FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='burns' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.burns FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='burns' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.burns FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='burns' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.burns FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.gifts ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='gifts' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.gifts FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='gifts' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.gifts FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='gifts' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.gifts FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='gifts' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.gifts FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.developer_wallet_stats ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='developer_wallet_stats' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.developer_wallet_stats FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='developer_wallet_stats' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.developer_wallet_stats FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='developer_wallet_stats' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.developer_wallet_stats FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='developer_wallet_stats' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.developer_wallet_stats FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.profit_metrics ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_metrics' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.profit_metrics FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_metrics' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.profit_metrics FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_metrics' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.profit_metrics FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_metrics' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.profit_metrics FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.profit_last_trader ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_last_trader' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.profit_last_trader FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_last_trader' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.profit_last_trader FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_last_trader' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.profit_last_trader FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_last_trader' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.profit_last_trader FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.profit_trade_state ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_trade_state' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.profit_trade_state FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_trade_state' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.profit_trade_state FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_trade_state' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.profit_trade_state FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profit_trade_state' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.profit_trade_state FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.ops_limits ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ops_limits' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.ops_limits FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ops_limits' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.ops_limits FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ops_limits' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.ops_limits FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ops_limits' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.ops_limits FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.token_status ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='token_status' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.token_status FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='token_status' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.token_status FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='token_status' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.token_status FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='token_status' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.token_status FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.trade_history ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='trade_history' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.trade_history FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='trade_history' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.trade_history FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='trade_history' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.trade_history FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='trade_history' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.trade_history FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+ALTER TABLE public.liquidity_history ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='liquidity_history' AND policyname='select_public') THEN
+    CREATE POLICY select_public ON public.liquidity_history FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='liquidity_history' AND policyname='insert_service') THEN
+    CREATE POLICY insert_service ON public.liquidity_history FOR INSERT WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='liquidity_history' AND policyname='update_service') THEN
+    CREATE POLICY update_service ON public.liquidity_history FOR UPDATE USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='liquidity_history' AND policyname='delete_service') THEN
+    CREATE POLICY delete_service ON public.liquidity_history FOR DELETE USING (auth.role() = 'service_role');
+  END IF;
+END $$;

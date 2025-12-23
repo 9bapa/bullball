@@ -635,9 +635,12 @@ export default function ProfitBallDashboard() {
         {/* Gift History Section */}
         <Card className="mb-8 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30 backdrop-blur-sm">
           <CardHeader className="pb-6">
-            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
-              <Gift className="w-6 h-6 text-orange-400" />
-              <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">GIFT HISTORY</span>
+            <CardTitle className="flex flex-col items-center text-xl font-black tracking-wider">
+              <div className="flex items-center space-x-3">
+                <Gift className="w-6 h-6 text-orange-400" />
+                <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">GIFT HISTORY</span>
+              </div>
+              <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent mt-2">{tradeGoal - tradeCount} trader gets creator fees</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
