@@ -185,8 +185,8 @@ export async function POST() {
       console.log('run-cycle rewards disabled or supabase unavailable', { configuredRewardSol, supabaseAdmin: !!supabaseAdmin })
     }
     
-    // Only update database if we have successful operations
-    if (supabaseAdmin && (feeSig || buySig || depositSig || rewardSig)) {
+    // Only insert into profit_liquidity_events if we performed buy or deposit operations
+    if (supabaseAdmin && (buySig || depositSig)) {
       await supabaseAdmin.from('profit_liquidity_events').insert({
         mint,
         sol_amount: liquiditySol,
@@ -197,27 +197,23 @@ export async function POST() {
         burn_tx: burnSig,
         created_at: new Date().toISOString()
       })
-      
-      // Update ops_limits only if we actually performed operations
+
+      // Update ops_limits for performed operations
       const operationsPerformed: string[] = []
-      if (feeSig) operationsPerformed.push('run-cycle')
       if (buySig) operationsPerformed.push('buy')
       if (depositSig) operationsPerformed.push('deposit')
-      
+
       for (const op of operationsPerformed) {
         const windowSeconds = parseInt(
-          op === 'run-cycle' ? (process.env.RATE_LIMIT_CYCLE_SECONDS || '120') :
           op === 'buy' ? (process.env.RATE_LIMIT_BUY_SECONDS || '30') :
           (process.env.RATE_LIMIT_DEPOSIT_SECONDS || '30')
         )
-        await supabaseAdmin.from('ops_limits').upsert({ 
-          key: op, 
-          window_seconds: windowSeconds, 
-          last_executed: new Date().toISOString() 
+        await supabaseAdmin.from('ops_limits').upsert({
+          key: op,
+          window_seconds: windowSeconds,
+          last_executed: new Date().toISOString()
         })
       }
-    } else if (supabaseAdmin) {
-      console.log('run-cycle no successful operations, skipping database updates')
     }
 
     // Always update profit_metrics last_update and next_cycle_in
@@ -231,6 +227,13 @@ export async function POST() {
         last_update: new Date().toISOString(),
         total_cycles: supabaseAdmin.rpc ? null : null,
         next_cycle_in: cycleWindowSeconds,
+      })
+
+      // Always update ops_limits for run-cycle to prevent rate limiting when no operations
+      await supabaseAdmin.from('ops_limits').upsert({
+        key: 'run-cycle',
+        window_seconds: cycleWindowSeconds,
+        last_executed: new Date().toISOString()
       })
     }
 

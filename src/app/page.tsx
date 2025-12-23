@@ -603,7 +603,14 @@ export default function ProfitBallDashboard() {
                       <Zap className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-white font-semibold tracking-wide">{t.signature}</p>
+                      <a
+                        href={`https://solscan.io/tx/${t.signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-white font-semibold tracking-wide hover:text-emerald-400 transition-colors underline"
+                      >
+                        {t.signature.slice(0, 8)}...{t.signature.slice(-8)}
+                      </a>
                       <p className="text-emerald-400 text-xs font-mono">{t.venue || 'pump'}</p>
                     </div>
                   </div>
@@ -637,8 +644,32 @@ export default function ProfitBallDashboard() {
                 <div key={l.id} className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-all duration-300">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-white font-semibold tracking-wide">Pool {l.poolKey}</p>
-                      <p className="text-blue-400 text-xs font-mono">Deposit {l.depositSig || 'N/A'}{l.burnSig ? ` · Burn ${l.burnSig}` : ''}</p>
+                      <p className="text-white font-semibold tracking-wide">Pool {l.poolKey.slice(0, 8)}...{l.poolKey.slice(-8)}</p>
+                      <p className="text-blue-400 text-xs font-mono">
+                        Deposit {l.depositSig ? (
+                          <a
+                            href={`https://solscan.io/tx/${l.depositSig}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-300 underline"
+                          >
+                            {l.depositSig.slice(0, 8)}...{l.depositSig.slice(-8)}
+                          </a>
+                        ) : 'N/A'}
+                        {l.burnSig ? (
+                          <>
+                            {' · Burn '}
+                            <a
+                              href={`https://solscan.io/tx/${l.burnSig}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-blue-300 underline"
+                            >
+                              {l.burnSig.slice(0, 8)}...{l.burnSig.slice(-8)}
+                            </a>
+                          </>
+                        ) : ''}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-300 font-mono">{l.quoteAmountSol.toFixed(4)} SOL</p>
@@ -679,8 +710,17 @@ export default function ProfitBallDashboard() {
                       <Gift className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-white font-semibold tracking-wide">{gift.trader}</p>
-                      <p className="text-orange-400 text-xs font-mono">{gift.txHash}</p>
+                      <p className="text-white font-semibold tracking-wide">{gift.trader.slice(0, 8)}...{gift.trader.slice(-8)}</p>
+                      <p className="text-orange-400 text-xs font-mono">
+                        <a
+                          href={`https://solscan.io/tx/${gift.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-orange-300 underline"
+                        >
+                          {gift.txHash.slice(0, 8)}...{gift.txHash.slice(-8)}
+                        </a>
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
