@@ -78,8 +78,12 @@ export async function POST() {
 
     let depositSig: string | null = null
     let burnSig: string | null = null
+    let liquidityStatus = 'skipped'
     const poolKey = process.env.PUMPSWAP_POOL
-    if (poolKey && liquiditySol > 0) {
+    
+    // Only attempt liquidity operations if we have a pool key and sufficient SOL
+    if (poolKey && liquiditySol > 0.001) {
+      liquidityStatus = 'attempted'
       let allowDeposit = true
       if (supabaseAdmin) {
         const { data: limitDeposit } = await supabaseAdmin
@@ -91,37 +95,45 @@ export async function POST() {
         const last = limitDeposit?.last_executed ? new Date(limitDeposit.last_executed).getTime() : 0
         const windowMs = ((process.env.RATE_LIMIT_DEPOSIT_SECONDS && parseInt(process.env.RATE_LIMIT_DEPOSIT_SECONDS)) || limitDeposit?.window_seconds || 30) * 1000
         allowDeposit = !last || now - last >= windowMs
+        
         if (allowDeposit) {
+          try {
+            const res = await depositAndBurnLp({ poolKey, quoteAmountSol: liquiditySol, slippage: 3 })
+            depositSig = res.depositSig
+            burnSig = res.burnSig
+            liquidityStatus = depositSig ? 'executed' : 'failed'
+            await supabaseAdmin.from('ops_limits').upsert({ key: 'deposit', window_seconds: Math.floor(windowMs / 1000), last_executed: new Date().toISOString() })
+          } catch (error) {
+            console.error('run-cycle liquidity deposit failed:', error)
+            liquidityStatus = 'failed'
+          }
+        } else {
+          console.log('run-cycle deposit rate limited', { last, now, windowMs })
+          liquidityStatus = 'rate_limited'
+        }
+      } else {
+        try {
           const res = await depositAndBurnLp({ poolKey, quoteAmountSol: liquiditySol, slippage: 3 })
           depositSig = res.depositSig
           burnSig = res.burnSig
-          await supabaseAdmin.from('ops_limits').upsert({ key: 'deposit', window_seconds: Math.floor(windowMs / 1000), last_executed: new Date().toISOString() })
+          liquidityStatus = depositSig ? 'executed' : 'failed'
+        } catch (error) {
+          console.error('run-cycle liquidity deposit failed:', error)
+          liquidityStatus = 'failed'
         }
-      } else {
-        const res = await depositAndBurnLp({ poolKey, quoteAmountSol: liquiditySol, slippage: 3 })
-        depositSig = res.depositSig
-        burnSig = res.burnSig
       }
+    } else {
+      console.log('run-cycle liquidity skipped', { poolKey, liquiditySol, reason: poolKey ? 'insufficient_sol' : 'no_pool_key' })
     }
-    if (supabaseAdmin) {
-      await supabaseAdmin.from('profit_liquidity_events').insert({
-        mint,
-        sol_amount: liquiditySol,
-        status: depositSig ? 'executed' : 'skipped',
-        fee_tx: feeSig,
-        buy_tx: buySig,
-        deposit_tx: depositSig,
-        burn_tx: burnSig,
-        created_at: new Date().toISOString()
-      })
-      await supabaseAdmin.from('ops_limits').upsert({ key: 'run-cycle', window_seconds: parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS || '30'), last_executed: new Date().toISOString() })
-    }
-
+    
+    // Handle rewards (must be before database updates)
     const rewardMode = process.env.REWARD_MODE || 'address'
     const rewardAddress = process.env.REWARD_ADDRESS
     let rewardSig: string | null = null
     let rewardSolUsed = 0
     const configuredRewardSol = parseFloat(process.env.REWARD_SOL_AMOUNT || '0')
+    const MIN_GIFT_TRADE_AMOUNT = 0.50 // Only trades ≥0.50 SOL qualify for gifts
+    
     if (configuredRewardSol > 0 && supabaseAdmin) {
       const { data: state } = await supabaseAdmin
         .from('profit_trade_state')
@@ -130,27 +142,90 @@ export async function POST() {
         .maybeSingle()
       const count = state?.current_count || 0
       const threshold = state?.current_threshold || 30
+      
       if (count >= threshold) {
         rewardSolUsed = configuredRewardSol
+        
         if (rewardMode === 'address' && rewardAddress) {
           rewardSig = await transferSol(rewardAddress, rewardSolUsed)
+          console.log('run-cycle reward sent to configured address', { rewardAddress, rewardSolUsed, rewardSig })
         } else if (rewardMode === 'last-trader') {
-          const { data: last } = await supabaseAdmin
+          // Only get last trader who made a qualifying trade (≥0.50 SOL)
+          const { data: lastQualifyingTrader } = await supabaseAdmin
             .from('profit_last_trader')
-            .select('address')
+            .select('address, trade_amount_sol')
+            .gte('trade_amount_sol', MIN_GIFT_TRADE_AMOUNT) // Only qualifying trades
             .order('updated_at', { ascending: false })
             .limit(1)
             .single()
-          if (last?.address) rewardSig = await transferSol(last.address, rewardSolUsed)
+            
+          if (lastQualifyingTrader?.address) {
+            rewardSig = await transferSol(lastQualifyingTrader.address, rewardSolUsed)
+            console.log('run-cycle reward sent to last qualifying trader', { 
+              address: lastQualifyingTrader.address, 
+              tradeAmount: lastQualifyingTrader.trade_amount_sol,
+              rewardSolUsed, 
+              rewardSig 
+            })
+          } else {
+            console.log('run-cycle no qualifying trader found (min 0.50 SOL required)')
+          }
         }
+        
         const newThreshold = Math.floor(30 + Math.random() * 271)
         await supabaseAdmin
           .from('profit_trade_state')
           .upsert({ id: 1, current_threshold: newThreshold, current_count: 0, updated_at: new Date().toISOString() })
+          
+        console.log('run-cycle reward threshold reset', { newThreshold, rewardMode, rewardSig: !!rewardSig })
+      } else {
+        console.log('run-cycle reward threshold not met', { count, threshold })
       }
+    } else {
+      console.log('run-cycle rewards disabled or supabase unavailable', { configuredRewardSol, supabaseAdmin: !!supabaseAdmin })
+    }
+    
+    // Only update database if we have successful operations
+    if (supabaseAdmin && (feeSig || buySig || depositSig || rewardSig)) {
+      await supabaseAdmin.from('profit_liquidity_events').insert({
+        mint,
+        sol_amount: liquiditySol,
+        status: liquidityStatus,
+        fee_tx: feeSig,
+        buy_tx: buySig,
+        deposit_tx: depositSig,
+        burn_tx: burnSig,
+        created_at: new Date().toISOString()
+      })
+      
+      // Update ops_limits only if we actually performed operations
+      const operationsPerformed: string[] = []
+      if (feeSig) operationsPerformed.push('run-cycle')
+      if (buySig) operationsPerformed.push('buy')
+      if (depositSig) operationsPerformed.push('deposit')
+      
+      for (const op of operationsPerformed) {
+        const windowSeconds = parseInt(
+          op === 'run-cycle' ? (process.env.RATE_LIMIT_CYCLE_SECONDS || '30') :
+          op === 'buy' ? (process.env.RATE_LIMIT_BUY_SECONDS || '30') :
+          (process.env.RATE_LIMIT_DEPOSIT_SECONDS || '30')
+        )
+        await supabaseAdmin.from('ops_limits').upsert({ 
+          key: op, 
+          window_seconds: windowSeconds, 
+          last_executed: new Date().toISOString() 
+        })
+      }
+    } else if (supabaseAdmin) {
+      console.log('run-cycle no successful operations, skipping database updates')
     }
 
-    if (supabaseAdmin) {
+    // Only update profit_metrics if we have successful operations
+    if (supabaseAdmin && (feeSig || buySig || depositSig || rewardSig)) {
+      // Calculate next cycle time based on actual timing
+      const cycleWindowSeconds = parseInt(process.env.RATE_LIMIT_CYCLE_SECONDS || '30')
+      const nextCycleTime = cycleWindowSeconds // Next cycle is after the rate limit window
+      
       await supabaseAdmin.from('profit_metrics').upsert({
         id: 1,
         creator_fees_collected: (deltaSol || 0),
@@ -158,7 +233,7 @@ export async function POST() {
         gifts_sent_sol: rewardSolUsed || 0,
         last_update: new Date().toISOString(),
         total_cycles: supabaseAdmin.rpc ? null : null,
-        next_cycle_in: 120,
+        next_cycle_in: nextCycleTime,
       })
     }
 

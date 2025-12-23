@@ -132,31 +132,50 @@ export default function ProfitBallDashboard() {
       } catch {}
     }
 
-    const countdownInterval = setInterval(() => {
-      setMetrics(prev => {
-        const newNextCycleIn = prev.nextCycleIn > 0 ? prev.nextCycleIn - 1 : 120
-        if (prev.nextCycleIn === 1) {
-          fetchStats()
-          fetchFeed()
-          fetchGifts()
-          fetchDevWallet()
-          fetchTrade()
+    const checkAndTriggerCycle = async () => {
+      try {
+        const response = await fetch('/api/bullball/cycle-check')
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Cycle check:', data)
+          
+          if (data.shouldRun) {
+            console.log('Triggering profit cycle...')
+            const triggerResponse = await fetch('/api/bullball/cycle-check', { method: 'POST' })
+            if (triggerResponse.ok) {
+              const result = await triggerResponse.json()
+              console.log('Cycle triggered:', result)
+              // Refresh all data after successful cycle
+              fetchStats()
+              fetchFeed()
+              fetchGifts()
+              fetchDevWallet()
+              fetchTrade()
+            }
+          }
         }
-        
-        return { ...prev, nextCycleIn: newNextCycleIn }
-      })
-    }, 1000)
+      } catch (error) {
+        console.error('Cycle check error:', error)
+      }
+    }
 
+    // Fetch all data immediately
     fetchStats()
     fetchFeed()
     fetchGifts()
     fetchDevWallet()
     fetchTrade()
+    
+    // Set up intervals for regular updates
     const statsInterval = setInterval(fetchStats, 10000)
     const feedInterval = setInterval(fetchFeed, 10000)
     const giftsInterval = setInterval(fetchGifts, 15000)
     const devInterval = setInterval(fetchDevWallet, 20000)
     const tradeInterval = setInterval(fetchTrade, 10000)
+    
+    // Check for cycle every 2 minutes (120 seconds)
+    checkAndTriggerCycle() // Check immediately on load
+    const cycleInterval = setInterval(checkAndTriggerCycle, 120000)
 
     const fetchTrades = async () => {
       if (!supabase) return
@@ -242,12 +261,12 @@ export default function ProfitBallDashboard() {
     }
 
     return () => {
-      clearInterval(countdownInterval)
       clearInterval(statsInterval)
       clearInterval(feedInterval)
       clearInterval(giftsInterval)
       clearInterval(devInterval)
       clearInterval(tradeInterval)
+      clearInterval(cycleInterval)
       if (tradeChannel) supabase && supabase.removeChannel(tradeChannel)
       if (liqChannel) supabase && supabase.removeChannel(liqChannel)
     }

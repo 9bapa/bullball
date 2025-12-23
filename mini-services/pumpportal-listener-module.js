@@ -90,11 +90,18 @@ const subscribe = async () => {
         const msg = JSON.parse(data.toString())
         console.log('[LISTENER] Raw trade message received:', JSON.stringify(msg, null, 2))
         
+        // Skip system messages (errors, subscription confirmations, etc.)
+        if (msg.message || msg.errors || !msg.signature) {
+          console.log('[LISTENER] Skipping system message')
+          return
+        }
+        
         if (!supabase) {
           console.warn('[LISTENER] Supabase not available, processing message without database')
           return
         }
         
+        // Only increment trade count for actual trades
         const { data: state } = await supabase
           .from('profit_trade_state')
           .select('current_threshold,current_count')
@@ -111,19 +118,36 @@ const subscribe = async () => {
             updated_at: new Date().toISOString() 
           })
 
-        const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
-        if (addr) {
-          await supabase.from('profit_last_trader').insert({ 
-            address: addr, 
-            updated_at: new Date().toISOString() 
-          })
-        }
-
         const signature = msg?.signature || msg?.tx || null
         const venue = msg?.pool || msg?.venue || null
         const amountSol = typeof msg?.solAmount === 'number' ? msg.solAmount : (typeof msg?.amount === 'number' ? msg.amount : null)
         const amountTokens = typeof msg?.tokenAmount === 'number' ? msg.tokenAmount : null
         const price = typeof msg?.price === 'number' ? msg.price : (amountSol && amountTokens ? (amountSol / amountTokens) : null)
+        
+        // Only store trades for gift rewards if they meet the minimum amount (≥0.50 SOL)
+        const MIN_GIFT_TRADE_AMOUNT = 0.50
+        const isQualifyingTrade = amountSol !== null && amountSol >= MIN_GIFT_TRADE_AMOUNT
+        
+        if (isQualifyingTrade && addr) {
+          await supabase.from('profit_last_trader').upsert({ 
+            address: addr, 
+            trade_amount_sol: amountSol,
+            signature: signature,
+            updated_at: new Date().toISOString() 
+          })
+          console.log('[LISTENER] Qualifying trade stored for gift rewards:', { 
+            address: addr, 
+            amountSol, 
+            signature,
+            minRequired: MIN_GIFT_TRADE_AMOUNT
+          })
+        } else if (addr) {
+          console.log('[LISTENER] Non-qualifying trade (below 0.50 SOL):', { 
+            address: addr, 
+            amountSol,
+            minRequired: MIN_GIFT_TRADE_AMOUNT
+          })
+        }
         
         await supabase.from('trade_history').insert({
           mint: MINT,

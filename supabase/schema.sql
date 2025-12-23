@@ -116,6 +116,8 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS profit_last_trader (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   address TEXT NOT NULL,
+  trade_amount_sol NUMERIC DEFAULT 0,
+  signature TEXT,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
