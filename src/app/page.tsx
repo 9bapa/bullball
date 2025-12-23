@@ -746,36 +746,9 @@ export default function ProfitBallDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-black/30 border border-blue-500/20">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Wallet Address</p>
-                  <p className="text-blue-400 font-mono font-semibold text-sm">{devWallet.address || 'N/A'}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-black/30 border border-blue-500/20">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Current Balance</p>
-                  <p className="text-2xl font-bold font-mono text-blue-300">
-                    {devWallet.balance.toFixed(4)} SOL
-                  </p>
-                  {/* <p className="text-sm text-gray-400">
-                    ${(devWallet.balance * metrics.currentSolPrice).toFixed(2)} USD
-                  </p> */}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-black/30 border border-green-500/20">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Total Received</p>
-                  <p className="text-xl font-bold font-mono text-green-300">
-                    {devWallet.totalReceived.toFixed(4)} SOL
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-black/30 border border-red-500/20">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Total Sent</p>
-                  <p className="text-xl font-bold font-mono text-red-300">
-                    {devWallet.totalSent.toFixed(4)} SOL
-                  </p>
-                </div>
-              </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Developer Wallet Address</p>
+              <p className="text-blue-400 font-mono font-semibold text-lg break-all">{devWallet.address || 'N/A'}</p>
             </div>
           </CardContent>
         </Card>
