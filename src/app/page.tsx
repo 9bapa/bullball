@@ -482,7 +482,7 @@ export default function ProfitBallDashboard() {
         <Card className="mb-12 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-sm">
           <CardHeader className="pb-6">
             <CardTitle className="text-2xl font-black text-center bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent tracking-wider">
-              PROFIT BALL MECHANICS
+              BULL BALL MECHANICS
             </CardTitle>
           </CardHeader>
           <CardContent>
