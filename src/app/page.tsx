@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TrendingUp, Gift, DollarSign, Activity, Clock, Zap } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface TokenMetrics {
   creatorFeesCollected: number
@@ -32,6 +34,28 @@ interface GiftHistory {
   txHash: string
 }
 
+interface TradeEntry {
+  id: string
+  signature: string
+  venue: string | null
+  amountSol?: number | null
+  amountTokens?: number | null
+  pricePerToken?: number | null
+  createdAt: Date
+}
+
+interface LiquidityEntry {
+  id: string
+  poolKey: string
+  quoteAmountSol: number
+  baseAmountTokens?: string | null
+  lpTokens?: string | null
+  slippage?: number
+  depositSig?: string | null
+  burnSig?: string | null
+  createdAt: Date
+}
+
 interface DevWallet {
   address: string
   balance: number
@@ -53,6 +77,9 @@ export default function ProfitBallDashboard() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const [giftHistory, setGiftHistory] = useState<GiftHistory[]>([])
+
+  const [trades, setTrades] = useState<TradeEntry[]>([])
+  const [liquidity, setLiquidity] = useState<LiquidityEntry[]>([])
 
   const [devWallet, setDevWallet] = useState<DevWallet>({
     address: '',
@@ -131,6 +158,89 @@ export default function ProfitBallDashboard() {
     const devInterval = setInterval(fetchDevWallet, 20000)
     const tradeInterval = setInterval(fetchTrade, 10000)
 
+    const fetchTrades = async () => {
+      if (!supabase) return
+      const { data } = await supabase
+        .from('trade_history')
+        .select('id,signature,venue,amount_sol,amount_tokens,price_per_token,created_at')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const mapped = (data || []).map((t: any) => ({
+        id: t.id,
+        signature: t.signature,
+        venue: t.venue || null,
+        amountSol: t.amount_sol != null ? Number(t.amount_sol) : null,
+        amountTokens: t.amount_tokens != null ? Number(t.amount_tokens) : null,
+        pricePerToken: t.price_per_token != null ? Number(t.price_per_token) : null,
+        createdAt: new Date(t.created_at)
+      }))
+      setTrades(mapped)
+    }
+
+    const fetchLiquidity = async () => {
+      if (!supabase) return
+      const { data } = await supabase
+        .from('liquidity_history')
+        .select('id,pool_key,quote_amount_sol,base_amount_tokens,lp_tokens,slippage,deposit_sig,burn_sig,created_at')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const mapped = (data || []).map((l: any) => ({
+        id: l.id,
+        poolKey: l.pool_key,
+        quoteAmountSol: Number(l.quote_amount_sol),
+        baseAmountTokens: l.base_amount_tokens ?? null,
+        lpTokens: l.lp_tokens ?? null,
+        slippage: l.slippage ?? undefined,
+        depositSig: l.deposit_sig ?? null,
+        burnSig: l.burn_sig ?? null,
+        createdAt: new Date(l.created_at)
+      }))
+      setLiquidity(mapped)
+    }
+
+    fetchTrades()
+    fetchLiquidity()
+
+    let tradeChannel: any = null
+    let liqChannel: any = null
+    if (supabase) {
+      tradeChannel = supabase
+        .channel('realtime-trades')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trade_history' }, payload => {
+          const t: any = payload.new
+          const entry: TradeEntry = {
+            id: t.id,
+            signature: t.signature,
+            venue: t.venue || null,
+            amountSol: t.amount_sol != null ? Number(t.amount_sol) : null,
+            amountTokens: t.amount_tokens != null ? Number(t.amount_tokens) : null,
+            pricePerToken: t.price_per_token != null ? Number(t.price_per_token) : null,
+            createdAt: new Date(t.created_at || new Date())
+          }
+          setTrades(prev => [entry, ...prev].slice(0, 20))
+        })
+        .subscribe()
+
+      liqChannel = supabase
+        .channel('realtime-liquidity')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'liquidity_history' }, payload => {
+          const l: any = payload.new
+          const entry: LiquidityEntry = {
+            id: l.id,
+            poolKey: l.pool_key,
+            quoteAmountSol: Number(l.quote_amount_sol || 0),
+            baseAmountTokens: l.base_amount_tokens ?? null,
+            lpTokens: l.lp_tokens ?? null,
+            slippage: l.slippage ?? undefined,
+            depositSig: l.deposit_sig ?? null,
+            burnSig: l.burn_sig ?? null,
+            createdAt: new Date(l.created_at || new Date())
+          }
+          setLiquidity(prev => [entry, ...prev].slice(0, 20))
+        })
+        .subscribe()
+    }
+
     return () => {
       clearInterval(countdownInterval)
       clearInterval(statsInterval)
@@ -138,6 +248,8 @@ export default function ProfitBallDashboard() {
       clearInterval(giftsInterval)
       clearInterval(devInterval)
       clearInterval(tradeInterval)
+      if (tradeChannel) supabase && supabase.removeChannel(tradeChannel)
+      if (liqChannel) supabase && supabase.removeChannel(liqChannel)
     }
   }, [])
 
@@ -197,17 +309,17 @@ export default function ProfitBallDashboard() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center font-bold text-black text-xl shadow-lg shadow-emerald-500/25">
-                P
+              <div className="w-14 h-14 rounded-full overflow-hidden shadow-lg shadow-emerald-500/25">
+                <Image src="/bullball4.JPG" alt="BullBall" width={56} height={56} className="w-full h-full object-cover" />
               </div>
               <div>
                 <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 bg-clip-text text-transparent leading-tight" style={{ fontFamily: 'Orbitron, monospace' }}>
-                  Bull Ball
+                  BullBall
                 </h1>
                 <p className="text-sm text-emerald-400/80 font-mono font-semibold tracking-wider">$BULLBALL</p>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
+            {/* <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <div className="relative">
                   <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
@@ -219,7 +331,7 @@ export default function ProfitBallDashboard() {
                 <p className="text-xs text-gray-400 uppercase tracking-wider">BULLBALL</p>
                 <p className="text-lg font-mono font-bold text-emerald-400">${metrics.currentSolPrice}</p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </header>
@@ -227,16 +339,22 @@ export default function ProfitBallDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pb-24 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent leading-tight">
+        <div className="mb-12 max-w-5xl mx-auto text-center md:text-left">
+          <div className="mx-auto md:float-left md:mr-8 w-48 h-48 md:w-[300px] md:h-[300px] rounded-full overflow-hidden border-4 border-emerald-400 shadow-lg shadow-emerald-500/25" style={{ shapeOutside: 'circle(50%)' }}>
+            <Image src="/bullball4.JPG" alt="BullBall" width={300} height={300} className="w-full h-full object-cover" />
+          </div>
+          <h3 className="text-4xl md:text-7xl font-black mb-6 bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent leading-tight">
             BULLISH AUTO-COMPOUNDING
             <br />
             <span className="text-6xl md:text-8xl">$$ ENGINE</span>
-          </h2>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto font-light leading-relaxed">
+          </h3>
+          <div className="md:clear-both"></div>
+        </div>
+        <div className="mb-12 max-w-5xl mx-auto text-centr">
+          <p className="text-xl md:text-2xl text-gray-300 font-light leading-relaxed mt-3 text-center">
             Every 2 minutes: <span className="text-emerald-400 font-semibold">Claim Fees</span> → <span className="text-purple-400 font-semibold">Buy Tokens</span> → <span className="text-blue-400 font-semibold">Add Liquidity</span> → <span className="text-red-400 font-semibold">Burn LP</span> → <span className="text-orange-400 font-semibold">Share Profits</span>
           </p>
-        </div>
+          </div>
 
         {/* Cycle Timer */}
         <Card className="mb-8 bg-gradient-to-r from-emerald-500/10 to-purple-500/10 border-emerald-500/30 backdrop-blur-sm">
@@ -439,6 +557,75 @@ export default function ProfitBallDashboard() {
                   <span className={`${getActivityTextColor(activity.type)} text-sm font-mono font-semibold`}>
                     {getTimeAgo(activity.timestamp)}
                   </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-8 bg-gradient-to-r from-yellow-500/10 to-emerald-500/10 border-yellow-500/30 backdrop-blur-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
+              <Activity className="w-6 h-6 text-emerald-400" />
+              <span className="bg-gradient-to-r from-emerald-400 to-yellow-400 bg-clip-text text-transparent">TRADE HISTORY</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {trades.length === 0 && (
+                <div className="flex items-center justify-center p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                  <span className="text-emerald-400 font-mono font-semibold">N/A</span>
+                </div>
+              )}
+              {trades.map(t => (
+                <div key={t.id} className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-300">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold tracking-wide">{t.signature}</p>
+                      <p className="text-emerald-400 text-xs font-mono">{t.venue || 'pump'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-300 font-mono">
+                      {t.amountSol != null ? `${t.amountSol?.toFixed?.(4)} SOL` : t.amountTokens != null ? `${t.amountTokens} tokens` : '—'}
+                    </p>
+                    <p className="text-xs text-gray-400">{getTimeAgo(t.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-8 bg-gradient-to-r from-blue-500/10 to-red-500/10 border-blue-500/30 backdrop-blur-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
+              <Activity className="w-6 h-6 text-blue-400" />
+              <span className="bg-gradient-to-r from-blue-400 to-red-400 bg-clip-text text-transparent">LIQUIDITY & BURN HISTORY</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {liquidity.length === 0 && (
+                <div className="flex items-center justify-center p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                  <span className="text-blue-400 font-mono font-semibold">N/A</span>
+                </div>
+              )}
+              {liquidity.map(l => (
+                <div key={l.id} className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white font-semibold tracking-wide">Pool {l.poolKey}</p>
+                      <p className="text-blue-400 text-xs font-mono">Deposit {l.depositSig || 'N/A'}{l.burnSig ? ` · Burn ${l.burnSig}` : ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-300 font-mono">{l.quoteAmountSol.toFixed(4)} SOL</p>
+                      <p className="text-xs text-gray-400">{getTimeAgo(l.createdAt)}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -35,6 +35,21 @@ ws.on('message', async data => {
     if (addr) {
       await supabase.from('profit_last_trader').insert({ address: addr, updated_at: new Date().toISOString() })
     }
+
+    const signature = msg?.signature || msg?.tx || null
+    const venue = msg?.pool || msg?.venue || null
+    const amountSol = typeof msg?.solAmount === 'number' ? msg.solAmount : (typeof msg?.amount === 'number' ? msg.amount : null)
+    const amountTokens = typeof msg?.tokenAmount === 'number' ? msg.tokenAmount : null
+    const price = typeof msg?.price === 'number' ? msg.price : (amountSol && amountTokens ? (amountSol / amountTokens) : null)
+    await supabase.from('trade_history').insert({
+      mint: MINT,
+      signature,
+      venue,
+      amount_sol: amountSol,
+      amount_tokens: amountTokens,
+      denominated_in_sol: !!amountSol && !amountTokens,
+      price_per_token: price,
+      created_at: new Date().toISOString(),
+    })
   } catch {}
 })
-

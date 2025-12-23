@@ -47,11 +47,13 @@ export async function POST() {
         const last = limitBuy?.last_executed ? new Date(limitBuy.last_executed).getTime() : 0
         const windowMs = ((process.env.RATE_LIMIT_BUY_SECONDS && parseInt(process.env.RATE_LIMIT_BUY_SECONDS)) || limitBuy?.window_seconds || 30) * 1000
         if (!last || now - last >= windowMs) {
-          buySig = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005, pool: 'auto' })
+          const r = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005 })
+          buySig = r.signature
           await supabaseAdmin.from('ops_limits').upsert({ key: 'buy', window_seconds: Math.floor(windowMs / 1000), last_executed: new Date().toISOString() })
         }
       } else {
-        buySig = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005, pool: 'auto' })
+        const r = await buyToken({ mint, amount: buySol, denominatedInSol: true, slippage: 3, priorityFee: 0.00005 })
+        buySig = r.signature
       }
     }
 

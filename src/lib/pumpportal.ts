@@ -1,5 +1,5 @@
 import { sendEncodedTransaction } from './solana'
-import { PublicKey } from '@solana/web3.js'
+import { supabaseAdmin } from './supabase'
 
 type PoolOption = 'pump' | 'raydium' | 'pump-amm' | 'launchlab' | 'raydium-cpmm' | 'bonk' | 'auto'
 
@@ -12,9 +12,12 @@ const getWalletPublicKey = () => {
 }
 
 const fetchEncodedTx = async (payload: any) => {
+  const apiKey = process.env.PUMPPORTAL_API_KEY
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (apiKey) headers['x-api-key'] = apiKey
   const res = await fetch(TRADE_LOCAL_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`PumpPortal error: ${res.statusText}`)
@@ -29,9 +32,72 @@ export const collectCreatorFee = async (priorityFee = 0.000001) => {
   return signature
 }
 
-export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, priorityFee = 0.00005, pool = 'auto' as PoolOption }: { mint: string; amount: number; denominatedInSol: boolean; slippage?: number; priorityFee?: number; pool?: PoolOption }) => {
+export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, priorityFee = 0.00005 }: { mint: string; amount: number; denominatedInSol: boolean; slippage?: number; priorityFee?: number }) => {
   const publicKey = getWalletPublicKey()
-  const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool })
-  const signature = await sendEncodedTransaction(encoded)
-  return signature
+  let preferAmm = false
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin.from('token_status').select('is_graduated').eq('mint', mint).maybeSingle()
+    preferAmm = !!data?.is_graduated
+  }
+  if (preferAmm) {
+    try {
+      const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump-amm' })
+      const signature = await sendEncodedTransaction(encoded)
+      if (supabaseAdmin) {
+        await supabaseAdmin.from('trade_history').insert({
+          mint,
+          signature,
+          venue: 'pump-amm',
+          amount_sol: denominatedInSol ? amount : null,
+          amount_tokens: !denominatedInSol ? amount : null,
+          denominated_in_sol: denominatedInSol,
+          slippage,
+          price_per_token: null,
+          created_at: new Date().toISOString(),
+        })
+      }
+      return { signature, venue: 'pump-amm' as PoolOption }
+    } catch {}
+  }
+  try {
+    const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump-amm' })
+    const signature = await sendEncodedTransaction(encoded)
+    if (supabaseAdmin && !preferAmm) {
+      await supabaseAdmin.from('token_status').upsert({ mint, is_graduated: true, graduated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    }
+    if (supabaseAdmin) {
+      await supabaseAdmin.from('trade_history').insert({
+        mint,
+        signature,
+        venue: 'pump-amm',
+        amount_sol: denominatedInSol ? amount : null,
+        amount_tokens: !denominatedInSol ? amount : null,
+        denominated_in_sol: denominatedInSol,
+        slippage,
+        price_per_token: null,
+        created_at: new Date().toISOString(),
+      })
+    }
+    return { signature, venue: 'pump-amm' as PoolOption }
+  } catch {
+    const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump' })
+    const signature = await sendEncodedTransaction(encoded)
+    if (supabaseAdmin && preferAmm) {
+      await supabaseAdmin.from('token_status').upsert({ mint, is_graduated: false, updated_at: new Date().toISOString() })
+    }
+    if (supabaseAdmin) {
+      await supabaseAdmin.from('trade_history').insert({
+        mint,
+        signature,
+        venue: 'pump',
+        amount_sol: denominatedInSol ? amount : null,
+        amount_tokens: !denominatedInSol ? amount : null,
+        denominated_in_sol: denominatedInSol,
+        slippage,
+        price_per_token: null,
+        created_at: new Date().toISOString(),
+      })
+    }
+    return { signature, venue: 'pump' as PoolOption }
+  }
 }

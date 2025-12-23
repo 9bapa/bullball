@@ -138,3 +138,44 @@ CREATE TABLE IF NOT EXISTS ops_limits (
   window_seconds INTEGER NOT NULL DEFAULT 30 CHECK (window_seconds >= 1),
   last_executed TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS token_status (
+  mint TEXT PRIMARY KEY,
+  is_graduated BOOLEAN DEFAULT FALSE,
+  graduated_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_status_updated ON token_status (updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS trade_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mint TEXT NOT NULL,
+  signature TEXT UNIQUE,
+  venue TEXT,
+  amount_sol NUMERIC(38,9),
+  amount_tokens NUMERIC(38,0),
+  denominated_in_sol BOOLEAN DEFAULT TRUE,
+  slippage INTEGER,
+  price_per_token NUMERIC(38,9),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_history_mint ON trade_history (mint);
+CREATE INDEX IF NOT EXISTS idx_trade_history_created ON trade_history (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS liquidity_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mint TEXT,
+  pool_key TEXT NOT NULL,
+  quote_amount_sol NUMERIC(38,9) NOT NULL,
+  base_amount_tokens NUMERIC(38,0),
+  lp_tokens NUMERIC(38,0),
+  slippage INTEGER,
+  deposit_sig TEXT,
+  burn_sig TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_liquidity_history_pool ON liquidity_history (pool_key);
+CREATE INDEX IF NOT EXISTS idx_liquidity_history_created ON liquidity_history (created_at DESC);
