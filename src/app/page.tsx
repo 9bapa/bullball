@@ -360,10 +360,10 @@ export default function ProfitBallDashboard() {
         {/* Hero Section */}
         <div className="mb-12 max-w-5xl mx-auto text-center md:text-left">
           <div className="mx-auto md:float-left md:mr-8 w-48 h-48 md:w-[300px] md:h-[300px] rounded-full overflow-hidden border-4 border-emerald-400 shadow-lg shadow-emerald-500/25" style={{ shapeOutside: 'circle(50%)' }}>
-            <Image src="/bullrhun.PNG" alt="BullBall" width={300} height={300} className="w-full h-full object-cover" />
+            <Image src="/bullrhun.PNG" alt="BullRhun" width={300} height={300} className="w-full h-full object-cover" />
           </div>
           <h3 className="text-4xl md:text-7xl font-black mb-6 bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent leading-tight">
-            BULLISH FLYWHEEL
+            INFINITE BULLRHUN
             <br />
             <span className="text-6xl md:text-8xl">$$ ENGINE</span>
           </h3>
