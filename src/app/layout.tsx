@@ -14,24 +14,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BullBall",
-  description: "Auto buy backs, auto compounding + gifts",
-  keywords: ["BullBall", "solana", "meme token", "crypto", "bullrun", "pumpfun", "bitcoin"],
-  authors: [{ name: "BullBall Team" }],
+  title: "BullRhun",
+  description: "Bullish flywheel, auto compounding + gifts",
+  keywords: ["BullRhun", "solana", "meme token", "crypto", "bullrun", "pumpfun", "bitcoin"],
+  authors: [{ name: "BullRhun Team" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "BullBall",
+    title: "BullRhun",
     description: "Auto buy backs, auto compounding + gifts",
-    url: "https://bullball.xyz",
-    siteName: "BullBall",
+    url: "https://bullrhun.xyz",
+    siteName: "BullRhun",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "BullBall",
-    description: "Auto buy backs, auto compounding + gifts",
+    title: "BullRhun",
+    description: "Bullish flywheel, auto compounding + gifts",
   },
 };
 
