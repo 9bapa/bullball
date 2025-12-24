@@ -378,12 +378,12 @@ export default function ProfitBallDashboard() {
         <div className="mb-12 flex justify-center">
           <div className="col-span-3 text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
             <a
-              href="https://pump.fun/coin/HjsE49hff2qYXBajQDEPELZLftsbzUyZb3ff5s8Gpump"
+              href="https://pump.fun/coin/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8Xpump"
               target="_blank"
               rel="noopener noreferrer"
               className="text-2xl md:text-3xl text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
             >
-              HjsE4...8Gpump
+              2Xioa...8Xpump
             </a>
           </div>
         </div>
