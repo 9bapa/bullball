@@ -101,29 +101,12 @@ const subscribe = async () => {
           return
         }
         
-        // Only increment trade count for actual trades
-        const { data: state } = await supabase
-          .from('profit_trade_state')
-          .select('current_threshold,current_count')
-          .eq('id', 1)
-          .maybeSingle()
-        const count = (state?.current_count || 0) + 1
-        
-        await supabase
-          .from('profit_trade_state')
-          .upsert({ 
-            id: 1, 
-            current_threshold: state?.current_threshold || 30, 
-            current_count: count, 
-            updated_at: new Date().toISOString() 
-          })
-
         const signature = msg?.signature || msg?.tx || null
         const venue = msg?.pool || msg?.venue || null
         const amountSol = typeof msg?.solAmount === 'number' ? msg.solAmount : (typeof msg?.amount === 'number' ? msg.amount : null)
         const amountTokens = typeof msg?.tokenAmount === 'number' ? msg.tokenAmount : null
         const price = typeof msg?.price === 'number' ? msg.price : (amountSol && amountTokens ? (amountSol / amountTokens) : null)
-const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
+        const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
         
         // Only store trades for gift rewards if they meet the minimum amount (≥0.50 SOL)
         const MIN_GIFT_TRADE_AMOUNT = 0.50
@@ -142,6 +125,24 @@ const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
             signature,
             minRequired: MIN_GIFT_TRADE_AMOUNT
           })
+
+        // Only increment trade count for actual trades
+        const { data: state } = await supabase
+          .from('profit_trade_state')
+          .select('current_threshold,current_count')
+          .eq('id', 1)
+          .maybeSingle()
+        const count = (state?.current_count || 0) + 1
+        
+        await supabase
+          .from('profit_trade_state')
+          .upsert({ 
+            id: 1, 
+            current_threshold: state?.current_threshold || 30, 
+            current_count: count, 
+            updated_at: new Date().toISOString() 
+          })
+
         } else if (addr) {
           console.log('[LISTENER] Non-qualifying trade (below 0.50 SOL):', { 
             address: addr, 
@@ -150,16 +151,16 @@ const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
           })
         }
         
-        await supabase.from('trade_history').insert({
-          mint: MINT,
-          signature,
-          venue,
-          amount_sol: amountSol,
-          amount_tokens: amountTokens,
-          denominated_in_sol: !!amountSol && !amountTokens,
-          price_per_token: price,
-          created_at: new Date().toISOString(),
-        })
+        // await supabase.from('trade_history').insert({
+        //   mint: MINT,
+        //   signature,
+        //   venue,
+        //   amount_sol: amountSol,
+        //   amount_tokens: amountTokens,
+        //   denominated_in_sol: !!amountSol && !amountTokens,
+        //   price_per_token: price,
+        //   created_at: new Date().toISOString(),
+        // })
         
         console.log('[LISTENER] Trade processed:', { 
           signature, 
