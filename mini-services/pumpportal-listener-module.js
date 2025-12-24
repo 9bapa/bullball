@@ -107,7 +107,7 @@ const subscribe = async () => {
         const amountTokens = typeof msg?.tokenAmount === 'number' ? msg.tokenAmount : null
         const price = typeof msg?.price === 'number' ? msg.price : (amountSol && amountTokens ? (amountSol / amountTokens) : null)
         const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
-        
+        let count = 0;
         // Only store trades for gift rewards if they meet the minimum amount (≥0.50 SOL)
         const MIN_GIFT_TRADE_AMOUNT = 0.50
         const isQualifyingTrade = amountSol !== null && amountSol >= MIN_GIFT_TRADE_AMOUNT
@@ -132,7 +132,7 @@ const subscribe = async () => {
           .select('current_threshold,current_count')
           .eq('id', 1)
           .maybeSingle()
-        const count = (state?.current_count || 0) + 1
+          count = (state?.current_count || 0) + 1
         
         await supabase
           .from('profit_trade_state')
