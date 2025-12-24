@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-
+import {
+  getBalance,
+} from "@/lib/solana";
 export async function GET() {
   try {
     const defaultMetrics = {
@@ -33,16 +35,23 @@ export async function GET() {
       const timeUntilNext = Math.max(0, Math.ceil((lastUpdate + cycleIntervalMs - now) / 1000))
       nextCycleIn = timeUntilNext
     }
+    const { data: dwallet } = await supabase
+    .from('developer_wallet_stats')
+    .select('*')
+    .eq('address', process.env.SOLANA_PUBLIC_KEY)
+    const rewardAddress:any = process.env.REWARD_ADDRESS;
+    const rewardAddressBalance = await getBalance(rewardAddress);
 
-    const { creator_fees_collected, tokens_bought, gifts_sent_sol, last_update, total_cycles, current_sol_price } = metricsRow
+    const {last_update, total_cycles, current_sol_price } = metricsRow
     const payload = {
-      creatorFeesCollected: creator_fees_collected ?? 0,
-      tokensBought: tokens_bought ?? 0,
-      giftsSentToTraders: gifts_sent_sol ?? 0,
+      creatorFeesCollected: dwallet[0].total_received_sol ?? 0,
+      tokensBought: dwallet[0].tokens_bought ?? 0,
+      giftsSentToTraders: dwallet[0].gifts_sent ?? 0,
       lastUpdate: last_update ?? new Date().toISOString(),
       nextCycleIn: nextCycleIn,
       totalProfitCycles: total_cycles ?? 0,
       currentSolPrice: current_sol_price ?? 0,
+      rewardAddressBalance: rewardAddressBalance ?? 0,
     }
     console.log('GET /api/bullball/stats', payload)
     return NextResponse.json(payload)

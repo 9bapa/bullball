@@ -1,4 +1,4 @@
-import { sendEncodedTransaction } from './solana'
+import { sendEncodedTransaction, getBalance } from './solana'
 import { supabaseAdmin } from './supabase'
 
 type PoolOption = 'pump' | 'raydium' | 'pump-amm' | 'launchlab' | 'raydium-cpmm' | 'bonk' | 'auto'
@@ -30,12 +30,15 @@ const fetchEncodedTx = async (payload: any) => {
 }
 
 export const collectCreatorFee = async (priorityFee = 0.000001) => {
+
   const publicKey = getWalletPublicKey()
   console.log('collectCreatorFee start', { publicKey, priorityFee })
   const encoded = await fetchEncodedTx({ publicKey, action: 'collectCreatorFee', priorityFee })
   const signature = await sendEncodedTransaction(encoded)
   console.log('collectCreatorFee done', { signature })
+
   return signature
+  
 }
 
 export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, priorityFee = 0.00005 }: { mint: string; amount: number; denominatedInSol: boolean; slippage?: number; priorityFee?: number }) => {

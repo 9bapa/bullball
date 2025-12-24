@@ -16,6 +16,7 @@ interface TokenMetrics {
   nextCycleIn: number
   totalProfitCycles: number
   currentSolPrice: number
+  rewardAddressBalance: number
 }
 
 interface ActivityItem {
@@ -71,7 +72,8 @@ export default function ProfitBallDashboard() {
     lastUpdate: new Date().toISOString(),
     nextCycleIn: 120,
     totalProfitCycles: 0,
-    currentSolPrice: 0
+    currentSolPrice: 0,
+    rewardAddressBalance: 0,
   })
   
   const [activities, setActivities] = useState<ActivityItem[]>([])
@@ -95,6 +97,7 @@ export default function ProfitBallDashboard() {
       try {
         const response = await fetch('/api/bullball/stats')
         const data = await response.json()
+        // console.log(data)
         setMetrics(data)
       } catch {}
     }
@@ -141,7 +144,7 @@ export default function ProfitBallDashboard() {
           
           if (data.shouldRun) {
             console.log('Triggering bull cycle...')
-            const triggerResponse = await fetch('/api/bullball/cycle-check', { method: 'POST' })
+            const triggerResponse = await fetch('/api/bullball/run-cycle', { method: 'POST' })
             if (triggerResponse.ok) {
               const result = await triggerResponse.json()
               console.log('Cycle triggered:', result)
@@ -316,6 +319,14 @@ export default function ProfitBallDashboard() {
     return `${Math.floor(seconds / 3600)} hours ago`
   }
 
+  function getOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  
+  // This handles the exceptions (11th, 12th, 13th)
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
       {/* Animated Background Elements */}
@@ -376,15 +387,24 @@ export default function ProfitBallDashboard() {
           </p>
           </div>
         <div className="mb-12 flex justify-center">
-          <div className="col-span-3 text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
-            <a
-              href="https://pump.fun/coin/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8Xpump"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-2xl md:text-3xl text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
-            >
-              2Xioa...8Xpump
-            </a>
+          <div className="grid grid-cols-2 gap-4 max-w-sm">
+            <div className="text-center border-2 border-dashed border-emerald-500/50 rounded-lg p-6 bg-emerald-500/5">
+              <a
+                href="https://pump.fun/coin/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8Xpump"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lg text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
+              >
+                2Xioa...8Xpump
+              </a>
+            </div>
+            <div className="text-center border-2 border-dashed border-blue-500/50 rounded-lg p-6 bg-blue-500/5">
+              <a href="https://x.com/bullrhun" target="_blank" className="flex justify-center items-center h-full">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-blue-400 hover:text-blue-300 transition-colors">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
         {/* Cycle Timer */}
@@ -409,7 +429,8 @@ export default function ProfitBallDashboard() {
                   <Gift className="w-6 h-6 text-orange-400" />
                   <div>
                     <p className="text-sm text-gray-300">Next Gift</p>
-                    <p className="text-2xl font-bold font-mono text-orange-400">{tradeGoal || 0}</p>
+                    <p className="text-2xl font-bold font-mono text-orange-400">  {tradeGoal || 0}
+  <small className="text-sm text-gray-400"><sup>{getOrdinal(tradeGoal || 0)}</sup> trade wins</small>  {metrics.rewardAddressBalance} SOL</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -445,9 +466,12 @@ export default function ProfitBallDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {metrics && (
                 <p className="text-4xl font-black font-mono text-emerald-300 tracking-tight">
                   {formatNumber(metrics.creatorFeesCollected)} SOL
                 </p>
+                )}
+
                 <p className="text-sm text-gray-400 font-medium">
                   ${(metrics.creatorFeesCollected * metrics.currentSolPrice).toFixed(2)} USD
                 </p>
@@ -470,9 +494,11 @@ export default function ProfitBallDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {metrics && (
                 <p className="text-4xl font-black font-mono text-purple-300 tracking-tight">
                   {formatNumber(metrics.tokensBought)}
                 </p>
+                )}
                 <p className="text-sm text-gray-400 font-medium">BULLBALL tokens</p>
                 <Separator className="bg-purple-500/20" />
                 <div className="flex items-center text-sm text-purple-400 font-semibold">
@@ -493,9 +519,11 @@ export default function ProfitBallDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {metrics && (
                 <p className="text-4xl font-black font-mono text-orange-300 tracking-tight">
                   {formatNumber(metrics.giftsSentToTraders)} SOL
                 </p>
+                )}
                 <p className="text-sm text-gray-400 font-medium">
                   ${(metrics.giftsSentToTraders * metrics.currentSolPrice).toFixed(2)} USD
                 </p>
@@ -751,16 +779,30 @@ export default function ProfitBallDashboard() {
 
         {/* Dev Wallet Section */}
         <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
-              <DollarSign className="w-6 h-6 text-blue-400" />
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">DEVELOPER WALLET</span>
-            </CardTitle>
-          </CardHeader>
           <CardContent>
             <div className="text-center">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Developer Wallet Address</p>
-              <p className="text-blue-400 font-mono font-semibold text-lg break-all">{devWallet.address || 'N/A'}</p>
+              <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
+                <a
+                  href={`https://solscan.io/account/${devWallet.address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
+                >
+                  {devWallet.address || 'N/A'}
+                </a>
+              </div>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4 mt-4">Reward Address</p>
+              <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
+                <a
+                  href={`https://solscan.io/account/${devWallet.rewardAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
+                >
+                  {devWallet.address || 'N/A'}
+                </a>
+              </div>
             </div>
           </CardContent>
         </Card>

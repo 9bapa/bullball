@@ -10,9 +10,8 @@ export async function GET() {
     }
     const { data } = await supabaseAdmin
       .from('developer_wallet_stats')
-      .select('address,balance_sol,total_received_sol,total_sent_sol,captured_at')
-      .order('captured_at', { ascending: false })
-      .limit(1)
+      .select('address,last_balance_sol,total_received_sol,total_sent_sol,captured_at')
+      .eq('address', process.env.SOLANA_PUBLIC_KEY)
       .maybeSingle()
 
     if (!data) {
@@ -22,7 +21,8 @@ export async function GET() {
     }
     const payload = {
       address: data.address || '',
-      balance: Number(data.balance_sol || 0),
+      rewardAddress: process.env.REWARD_ADDRESS,
+      balance: Number(data.last_balance_sol || 0),
       totalReceived: Number(data.total_received_sol || 0),
       totalSent: Number(data.total_sent_sol || 0)
     }

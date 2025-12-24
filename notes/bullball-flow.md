@@ -6,8 +6,8 @@ BullBall End-to-End Profit Cycle Flow
 - Impl: `src/lib/pumpportal.ts:26–31` logs start and signature; `fetchEncodedTx` sends `action: 'collectCreatorFee'`
 - Logs: wallet balance before/after claim `src/app/api/bullball/run-cycle/route.ts:28–33`
 
-2) Split Claimed Fees (10% → Platform Wallet)
-- Action: Transfer 10% of `deltaSol` to `PLATFORM_WALLET`
+2) Split Claimed Fees (30% → Platform Wallet)
+- Action: Transfer 30% of `deltaSol` to `PLATFORM_WALLET`
 - Code: `src/app/api/bullball/run-cycle/route.ts:35–45`
 - Env: `PLATFORM_WALLET` destination
 - Logs: platform fee and signature `src/app/api/bullball/run-cycle/route.ts:38–42`
