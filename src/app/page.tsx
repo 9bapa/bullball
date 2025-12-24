@@ -732,7 +732,6 @@ export default function ProfitBallDashboard() {
                 <Gift className="w-6 h-6 text-orange-400" />
                 <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">GIFT HISTORY</span>
               </div>
-              <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent mt-2">{tradeGoal - tradeCount} trader gets creator fees</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -805,6 +804,17 @@ export default function ProfitBallDashboard() {
                   {devWallet.address || 'N/A'}
                 </a>
               </div>
+            </div>
+            <div className="text-center mt-10">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Creator Rewards Split</p>
+              <p className="text-2xl font-bold font-mono text-orange-300">
+                Buy Back: 78%
+                Dev: 12%:
+                Gift: 10
+              </p>
+              <p className="text-sm text-gray-400 mt-3">
+                Buy backs during bonding curve are held to pay for dex & other marketing
+              </p>
             </div>
           </CardContent>
         </Card>
