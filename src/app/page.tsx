@@ -59,6 +59,7 @@ interface LiquidityEntry {
 
 interface DevWallet {
   address: string
+  rewardAddress: string
   balance: number
   totalReceived: number
   totalSent: number
@@ -85,6 +86,7 @@ export default function ProfitBallDashboard() {
 
   const [devWallet, setDevWallet] = useState<DevWallet>({
     address: '',
+    rewardAddress: '',
     balance: 0,
     totalReceived: 0,
     totalSent: 0
