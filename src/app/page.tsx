@@ -824,10 +824,10 @@ export default function ProfitBallDashboard() {
       <footer className="fixed bottom-0 left-0 right-0 border-t border-emerald-500/20 backdrop-blur-sm bg-black/40 z-40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between text-sm">
-            <p className="text-gray-400 font-mono text-xs">Last updated: {new Date(metrics.lastUpdate).toLocaleTimeString()}</p>
+            <p className="text-gray-400 font-mono text-xs">Not Financial service, no promise of profit</p>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-emerald-400 font-bold tracking-wide">AUTO-COMPOUNDING ENABLED</span>
+              <span className="text-emerald-400 font-bold tracking-wide">For Entertaiment ONLY </span>
             </div>
           </div>
         </div>
