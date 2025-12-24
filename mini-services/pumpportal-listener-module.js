@@ -123,6 +123,7 @@ const subscribe = async () => {
         const amountSol = typeof msg?.solAmount === 'number' ? msg.solAmount : (typeof msg?.amount === 'number' ? msg.amount : null)
         const amountTokens = typeof msg?.tokenAmount === 'number' ? msg.tokenAmount : null
         const price = typeof msg?.price === 'number' ? msg.price : (amountSol && amountTokens ? (amountSol / amountTokens) : null)
+const addr = msg?.buyer || msg?.trader || msg?.account || msg?.wallet || null
         
         // Only store trades for gift rewards if they meet the minimum amount (≥0.50 SOL)
         const MIN_GIFT_TRADE_AMOUNT = 0.50
