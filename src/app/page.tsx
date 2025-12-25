@@ -967,13 +967,13 @@ export default function BullrhunDashboard() {
         </Card>
 
         {/* Footer */}
-        <footer className="fixed bottom-0 left-0 right-0 border-t border-emerald-500/20 backdrop-blur-sm bg-black/40 z-40">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between text-sm">
-              <p className="text-gray-400 font-mono text-xs">copyright © 2024 Bullrhun. All rights reserved. Not financial service</p>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-emerald-400 font-bold tracking-wide">24/7 Bull<em>Rhun</em></span>
+        <footer className="relative border-t border-emerald-500/20 backdrop-blur-sm bg-black/40">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-sm">
+              <p className="text-gray-400 font-mono text-xs text-center">copyright © 2024 Bullrhun. All rights reserved. Not financial service</p>
+              <div className="flex items-center space-x-3">
+                <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span className="text-emerald-400 font-bold tracking-wide text-center">24/7 Bull<em>Rhun</em></span>
               </div>
             </div>
           </div>
