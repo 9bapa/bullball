@@ -966,8 +966,9 @@ export default function BullrhunDashboard() {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <footer className="relative border-t border-emerald-500/20 backdrop-blur-sm bg-black/40">
+      </main>
+              {/* Footer */}
+        <footer className="relative border-t border-emerald-500/20 backdrop-blur-sm bg-black/40 mt-10">
           <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-sm">
               <p className="text-gray-400 font-mono text-xs text-center">copyright © 2024 Bullrhun. All rights reserved. Not financial service</p>
@@ -978,7 +979,6 @@ export default function BullrhunDashboard() {
             </div>
           </div>
         </footer>
-      </main>
     </div>
   )
 }
