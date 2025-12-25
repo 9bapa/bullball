@@ -95,40 +95,14 @@ interface ListenerStatus {
 }
 
 export default function BullrhunDashboard() {
-  const [metrics, setMetrics] = useState<BullrhunMetrics>({
-    total_cycles: 0,
-    total_fees_collected: 0,
-    total_trades: 0,
-    total_rewards_sent: 0,
-    current_sol_price: 0,
-    last_cycle_at: null,
-    next_cycle_in: 120,
-    total_tokens_bought: 0,
-    total_gifts_sent: 0,
-    total_sol_spent: 0,
-  })
+  // Local metrics state removed - now using data from API directly
 
   // SOL price now comes from metrics API (updated by cycle service with CoinGecko)
 
   // Cron control handlers
   // Handlers removed - not needed for new UI
 
-  // Map API response to BullrhunMetrics interface
-  const mapApiToMetrics = (apiData: any): BullrhunMetrics => {
-    return {
-      total_cycles: apiData.total_cycles || apiData.totalCycles || 0,
-      total_fees_collected: apiData.total_fees_collected || apiData.totalFeesCollected || 0,
-      total_trades: apiData.total_trades || apiData.totalTrades || 0,
-      total_rewards_sent: apiData.total_rewards_sent || apiData.totalRewardsSent || 0,
-      current_sol_price: apiData.current_sol_price || apiData.currentSolPrice || 0,
-      last_cycle_at: apiData.last_cycle_at || apiData.lastCycleAt || null,
-      next_cycle_in: apiData.next_cycle_in || apiData.nextCycleIn || 120,
-      // Enhanced metrics for 11-step flow
-      total_tokens_bought: apiData.total_tokens_bought || apiData.totalTokensBought || 0,
-      total_gifts_sent: apiData.total_gifts_sent || apiData.totalGiftsSent || 0,
-      total_sol_spent: apiData.total_sol_spent || apiData.totalSolSpent || 0,
-    }
-  }
+  // mapApiToMetrics removed - using API data directly
 
   const [data, setData] = useState<any>(null)
   const [activities, setActivities] = useState<Array<{ timestamp: string; message: string; type: 'info' | 'success' | 'warning' | 'error' }>>([])
@@ -483,14 +457,17 @@ export default function BullrhunDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {data && data.overview && (
+                  <>
                 <p className="text-4xl font-black font-mono text-emerald-300 tracking-tight">
                   {formatNumber(data.overview.totalFeesCollected)} SOL
                 </p>
-                )}
 
                 <p className="text-sm text-gray-400 font-medium">
                   ${(data.overview.totalFeesCollected * data.overview.currentSolPrice).toFixed(2)} USD
                 </p>
+                </>
+                                )}
+
                 <Separator className="bg-emerald-500/20" />
                 <div className="flex items-center text-sm text-emerald-400 font-semibold">
                   <TrendingUp className="w-4 h-4 mr-2" />
