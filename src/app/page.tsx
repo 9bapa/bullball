@@ -146,7 +146,7 @@ export default function BullrhunDashboard() {
       try {
         const response = await fetch('/api/bullrhun/metrics')
         const apiData = await response.json()
-        console.log('API Response:', apiData)
+        console.log('API Response:', apiData.dev_wallet)
         setData(apiData)
         setActivities(apiData.activities || [])
       } catch (error) {
