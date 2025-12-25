@@ -315,9 +315,13 @@ export default function BullrhunDashboard() {
         <div className="mb-12 max-w-4xl mx-auto">
           <div className="flex flex-col items-center justify-center">
             {/* Hero Image */}
-            <div className="w-64 h-64 lg:w-80 lg:h-80 rounded-xl overflow-hidden transform hover:scale-105 transition-all duration-300">
-              <Image src="/bullrhun3.png" alt="BullRhun" width={400} height={400} className="w-full h-full object-cover" />
-            </div>
+            <div className="w-64 h-64 lg:w-80 lg:h-80 rounded-xl overflow-hidden transform hover:scale-105 transition-all duration-300 relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-xl"></div>
+                <div className="absolute inset-1 border-2 border-slate-700/50 rounded-xl shadow-2xl shadow-black/30"></div>
+                <div className="relative w-full h-full flex items-center justify-center rounded-xl p-4 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-sm">
+                  <Image src="/bullrhun.png" alt="BullRhun" width={400} height={400} className="w-full h-full object-contain rounded-lg filter drop-shadow-2xl" />
+                </div>
+              </div>
             
           </div>
         </div>
