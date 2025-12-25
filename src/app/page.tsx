@@ -316,7 +316,7 @@ export default function BullrhunDashboard() {
           <div className="flex flex-col items-center justify-center">
             {/* Hero Image */}
             <div className="w-64 h-64 lg:w-80 lg:h-80 rounded-xl overflow-hidden transform hover:scale-105 transition-all duration-300">
-              <Image src="/bullrhun3.PNG" alt="BullRhun" width={400} height={400} className="w-full h-full object-cover" />
+              <Image src="/bullrhun3.png" alt="BullRhun" width={400} height={400} className="w-full h-full object-cover" />
             </div>
             
           </div>
