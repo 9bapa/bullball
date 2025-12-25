@@ -293,12 +293,22 @@
 
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+    display: none !important;
+  }
+
+  /* Force hide scrollbars in all scrollable containers */
+  .overflow-y-auto::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .overflow-y-auto {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
   /* Animate on scroll utilities */

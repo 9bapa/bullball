@@ -15,15 +15,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "BullRhun",
-  description: "Bullish flywheel, auto compounding + gifts",
+  description: "24/7 BullRhun",
   keywords: ["BullRhun", "solana", "meme token", "crypto", "bullrun", "pumpfun", "bitcoin"],
-  authors: [{ name: "BullRhun Team" }],
+  authors: [{ name: "9bapa" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
     title: "BullRhun",
-    description: "Auto buy backs, auto compounding + gifts",
+    description: "24/7 BullRhun",
     url: "https://bullrhun.xyz",
     siteName: "BullRhun",
     type: "website",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "BullRhun",
-    description: "Bullish flywheel, auto compounding + gifts",
+    description: "24/7 BullRhun",
   },
 };
 
