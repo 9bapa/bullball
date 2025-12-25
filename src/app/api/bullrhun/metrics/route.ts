@@ -36,6 +36,12 @@ export async function GET() {
     ]);
 
     // Get environment wallet addresses
+    const rewardBalance = config.WALLET_REWARD ? await getBalance(config.WALLET_REWARD) : 0;
+    
+    // Debug logging for wallet balance
+    console.log('🔍 Wallet Debug Info:');
+    console.log('  - WALLET_REWARD config:', config.WALLET_REWARD);
+    console.log('  - Reward balance:', rewardBalance, 'SOL');
 
     return NextResponse.json({
       // Basic metrics
@@ -91,10 +97,10 @@ export async function GET() {
 
       // Environment wallets
       dev_wallet: {
-        address: config.WALLET_DEV,
-        rewardAddress: config.WALLET_REWARD,
-        rewardBalance: config.WALLET_REWARD ? await getBalance(config.WALLET_REWARD) : 0, // getBalance already returns SOL
-      },
+          address: config.WALLET_DEV,
+          rewardAddress: config.WALLET_REWARD,
+          rewardBalance: rewardBalance,
+        },
 
       // Trade goal information
       trade_goal: {
