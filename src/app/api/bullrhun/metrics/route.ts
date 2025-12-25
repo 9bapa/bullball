@@ -36,13 +36,8 @@ export async function GET() {
     ]);
 
     // Get environment wallet addresses
-    const rewardBalance = config.WALLET_REWARD ? await getBalance(config.WALLET_REWARD) : 0;
+    const rewardBalance =  await getBalance(process.env.WALLET_REWARD as string);
     
-    // Debug logging for wallet balance
-    console.log('🔍 Wallet Debug Info:');
-    console.log('  - WALLET_REWARD config:', config.WALLET_REWARD);
-    console.log('  - Reward balance:', rewardBalance, 'SOL');
-
     return NextResponse.json({
       // Basic metrics
       overview: {
