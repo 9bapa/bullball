@@ -319,7 +319,7 @@ export default function BullrhunDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-xl"></div>
                 <div className="absolute inset-1 border-2 border-slate-700/50 rounded-xl shadow-2xl shadow-black/30"></div>
                 <div className="relative w-full h-full flex items-center justify-center rounded-xl p-4 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-sm">
-                  <Image src="/bullrhun.png" alt="BullRhun" width={400} height={400} className="w-full h-full object-contain rounded-lg filter drop-shadow-2xl" />
+                  <Image src="/bullrhun.PNG" alt="BullRhun" width={400} height={400} className="w-full h-full object-contain rounded-lg filter drop-shadow-2xl" />
                 </div>
               </div>
             
