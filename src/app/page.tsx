@@ -928,23 +928,23 @@ export default function BullrhunDashboard() {
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Developer Wallet Address</p>
               <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
                 <a
-                  href={`https://solscan.io/account/${data?.dev_wallet?.address}`}
+                  href="https://solscan.io/account/8qqCpRYUhm4KB5DgA66WCFLtu46GKgYNeX7sg5rEzjzM"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
                 >
-                  {data?.dev_wallet?.address || 'N/A'}
+                  8qqCpRYUhm4KB5DgA66WCFLtu46GKgYNeX7sg5rEzjzM
                 </a>
               </div>
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-4 mt-4">Gift Address</p>
               <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
                 <a
-                  href={`https://solscan.io/account/${data?.dev_wallet?.rewardAddress}`}
+                  href="https://solscan.io/account/Ehi4PQ3QmEGqkkd8ZVxruuMLq7KhEqVRSrdYGixYewuk"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
                 >
-                  {data?.dev_wallet?.rewardAddress || 'N/A'}
+                  Ehi4PQ3QmEGqkkd8ZVxruuMLq7KhEqVRSrdYGixYewuk
                 </a>
               </div>
             </div>
