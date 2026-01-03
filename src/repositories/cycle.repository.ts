@@ -5,7 +5,9 @@ import {
   CycleQueryOptions,
   CycleStatus 
 } from '@/types/bullrhun.types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = supabase!;
 
 export class CycleRepository extends BaseRepository<BullrhunCycle> {
   constructor() {
@@ -13,7 +15,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
   }
 
   async createCycle(data: CreateCycleData): Promise<BullrhunCycle> {
-    return this.create({
+    return this.createWithServiceRole({
       ...data,
       status: CycleStatus.PENDING,
     });
@@ -42,7 +44,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
       updateData.executed_at = new Date().toISOString();
     }
 
-    return this.update(id, updateData);
+    return this.updateWithServiceRole(id, updateData);
   }
 
   async findByMint(
@@ -90,7 +92,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
     startDate: string, 
     endDate: string
   ): Promise<BullrhunCycle[]> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseClient
       .from('bullrhun_cycles')
       .select('*')
       .gte('created_at', startDate)
@@ -108,7 +110,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
     const conditions = { status: CycleStatus.COMPLETED } as any;
     if (mint) conditions.mint = mint;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_cycles')
       .select('*')
       .match(conditions)
@@ -139,7 +141,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
 
   // Get total fees collected across all cycles
   async getTotalFeesCollected(): Promise<number> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_cycles')
       .select('fee_amount_sol')
       .eq('status', CycleStatus.COMPLETED);
@@ -153,7 +155,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
 
   // Get total amount spent on buys across all cycles
   async getTotalBuyAmount(): Promise<number> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_cycles')
       .select('buy_amount_sol')
       .eq('status', CycleStatus.COMPLETED);
@@ -178,7 +180,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
     totalBuys: number;
     totalRewards: number;
   }> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_cycles')
       .select('status, fee_amount_sol, buy_amount_sol, reward_amount_sol');
 
@@ -222,7 +224,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('bullrhun_cycles')
       .update(updateData)
       .eq('id', id);
@@ -243,7 +245,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('bullrhun_cycles')
       .update(updateData)
       .eq('id', id);
@@ -254,7 +256,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
   }
 
   async getRecentCyclesWithWinner(limit: number = 10): Promise<BullrhunCycle[]> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_cycles')
       .select('*')
       .not('winner_address', 'is', null)
@@ -269,7 +271,7 @@ export class CycleRepository extends BaseRepository<BullrhunCycle> {
   }
 
   async getCurrentRunningCycle(): Promise<BullrhunCycle | null> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_cycles')
       .select('*')
       .eq('status', CycleStatus.PENDING)

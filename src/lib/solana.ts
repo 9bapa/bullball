@@ -174,7 +174,7 @@ export const collectCreatorFee = async (mint: string, amountSol: number) => {
     // Generate a mock transaction signature for fee collection
     const signature = `fee_collected_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     
-    console.log(`💰 Simulated fee collection: ${amountSol} SOL for mint ${mint.substring(0, 8)}...`);
+    console.log(`💰 Simulated fee collection: ${amountSol} SOL for mint ${mint.substring(0, 8)}... ${signature}`);
     
     return {
       signature: {

@@ -114,25 +114,35 @@ export class CronJobManager {
       // Check for running cycles and cleanup stuck ones
       const runningCycles = await this.cycleService.getRunningCycles();
       
-      // Auto-cleanup stuck cycles (older than 10 minutes)
+      // Auto-cleanup stuck cycles (older than 5 minutes - more aggressive cleanup)
       const stuckCycles = runningCycles.filter(cycle => {
         const created = new Date(cycle.created_at);
         const now = new Date();
         const minutesAgo = (now.getTime() - created.getTime()) / (1000 * 60);
-        return minutesAgo > 10;
+        
+        // Also mark as stuck if it's pending for too long without status change
+        const isStuckByAge = minutesAgo > 5;
+        const isStuckByStatus = cycle.status === CycleStatus.PENDING && minutesAgo > 2;
+        
+        return isStuckByAge || isStuckByStatus;
       });
       
       if (stuckCycles.length > 0) {
         this.logActivity(`🔧 Found ${stuckCycles.length} stuck cycles, cleaning up...`, 'warning');
         
         for (const stuckCycle of stuckCycles) {
+          const stuckReason = stuckCycle.status === CycleStatus.PENDING && 
+            (new Date().getTime() - new Date(stuckCycle.created_at).getTime()) / (1000 * 60) > 2 
+              ? 'Pending too long (2+ minutes)' 
+              : 'Stuck too long (5+ minutes)';
+          
           await this.cycleRepo.updateCycleStatus(
             stuckCycle.id,
             CycleStatus.FAILED,
-            {},
-            `Auto-cleanup: Cycle stuck for more than 10 minutes`
+            { error_message: stuckReason },
+            `Auto-cleanup: ${stuckReason}`
           );
-          this.logActivity(`🧹 Marked cycle ${stuckCycle.id.substring(0, 8)} as failed (stuck)`, 'warning');
+          this.logActivity(`🧹 Marked cycle ${stuckCycle.id.substring(0, 8)} as failed (${stuckReason})`, 'warning');
         }
         
         // Re-check after cleanup
@@ -279,6 +289,51 @@ export class CronJobManager {
   async emergencyStop(): Promise<void> {
     console.log('🚨 Emergency stop activated');
     await this.stop();
+  }
+
+  async forceCleanupAllCycles(): Promise<{ cleaned: number; errors: string[] }> {
+    try {
+      const runningCycles = await this.cycleService.getRunningCycles();
+      const errors: string[] = [];
+      let cleaned = 0;
+
+      console.log(`🧹 Force cleaning up ${runningCycles.length} running cycles...`);
+
+      for (const cycle of runningCycles) {
+        try {
+          const created = new Date(cycle.created_at);
+          const now = new Date();
+          const minutesAgo = (now.getTime() - created.getTime()) / (1000 * 60);
+          
+          const cleanupReason = minutesAgo > 5 
+            ? `Stuck for ${Math.round(minutesAgo)} minutes` 
+            : 'Manual cleanup';
+          
+          await this.cycleRepo.updateCycleStatus(
+            cycle.id,
+            CycleStatus.FAILED,
+            { 
+              error_message: cleanupReason,
+            },
+            `Force cleanup: ${cleanupReason}`
+          );
+          cleaned++;
+          this.logActivity(`🧹 Cleaned cycle ${cycle.id.substring(0, 8)} (${cleanupReason})`, 'info');
+        } catch (error) {
+          const errorMsg = `Failed to cleanup cycle ${cycle.id}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          errors.push(errorMsg);
+          console.error(`❌ ${errorMsg}`);
+        }
+      }
+
+      console.log(`🏁 Cleaned ${cleaned} cycles${errors.length > 0 ? ` with ${errors.length} errors` : ''}`);
+      
+      return { cleaned, errors };
+    } catch (error) {
+      const errorMsg = `Failed to cleanup cycles: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`❌ ${errorMsg}`);
+      return { cleaned: 0, errors: [errorMsg] };
+    }
   }
 }
 

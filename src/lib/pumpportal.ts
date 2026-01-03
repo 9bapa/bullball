@@ -1,13 +1,15 @@
 import { sendEncodedTransaction, getBalance } from './solana'
-import { supabaseAdmin } from './supabase'
+import { supabase } from './supabase'
+
+const supabaseClient = supabase!;
 
 type PoolOption = 'pump' | 'raydium' | 'pump-amm' | 'launchlab' | 'raydium-cpmm' | 'bonk' | 'auto'
 
 const TRADE_LOCAL_URL = 'https://pumpportal.fun/api/trade-local'
 
-const getWalletPublicKey = () => {
-  const pk = process.env.SOLANA_PUBLIC_KEY
-  if (!pk) throw new Error('Missing SOLANA_PUBLIC_KEY')
+export const getWalletPublicKey = () => {
+  const pk = process.env.WALLET_DEV
+  if (!pk) throw new Error('Missing WALLET_DEV')
   return pk
 }
 
@@ -52,8 +54,8 @@ export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, p
   
   console.log('buyToken start', { mint, amount, denominatedInSol, slippage, priorityFee })
   let preferAmm = false
-  if (supabaseAdmin) {
-    const { data } = await supabaseAdmin.from('token_status').select('is_graduated').eq('mint', mint).maybeSingle()
+  if (supabaseClient) {
+    const { data } = await supabase.from('token_status').select('is_graduated').eq('mint', mint).maybeSingle()
     preferAmm = !!data?.is_graduated
   }
   if (preferAmm) {
@@ -61,8 +63,8 @@ export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, p
       const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump-amm' })
       const signature = await sendEncodedTransaction(encoded)
       console.log('buyToken venue', { venue: 'pump-amm', signature })
-      if (supabaseAdmin) {
-        await supabaseAdmin.from('trade_history').insert({
+      if (supabase) {
+        await supabase.from('trade_history').insert({
           mint,
           signature,
           venue: 'pump-amm',
@@ -81,11 +83,11 @@ export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, p
     const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump-amm' })
     const signature = await sendEncodedTransaction(encoded)
     console.log('buyToken venue', { venue: 'pump-amm', signature })
-    if (supabaseAdmin && !preferAmm) {
-      await supabaseAdmin.from('token_status').upsert({ mint, is_graduated: true, graduated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    if (supabase && !preferAmm) {
+      await supabase.from('token_status').upsert({ mint, is_graduated: true, graduated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     }
-    if (supabaseAdmin) {
-      await supabaseAdmin.from('trade_history').insert({
+    if (supabase) {
+      await supabase.from('trade_history').insert({
         mint,
         signature,
         venue: 'pump-amm',
@@ -102,11 +104,11 @@ export const buyToken = async ({ mint, amount, denominatedInSol, slippage = 3, p
     const encoded = await fetchEncodedTx({ publicKey, action: 'buy', mint, amount, denominatedInSol: String(denominatedInSol), slippage, priorityFee, pool: 'pump' })
     const signature = await sendEncodedTransaction(encoded)
     console.log('buyToken venue', { venue: 'pump', signature })
-    if (supabaseAdmin && preferAmm) {
-      await supabaseAdmin.from('token_status').upsert({ mint, is_graduated: false, updated_at: new Date().toISOString() })
+    if (supabase && preferAmm) {
+      await supabase.from('token_status').upsert({ mint, is_graduated: false, updated_at: new Date().toISOString() })
     }
-    if (supabaseAdmin) {
-      await supabaseAdmin.from('trade_history').insert({
+    if (supabase) {
+      await supabase.from('trade_history').insert({
         mint,
         signature,
         venue: 'pump',

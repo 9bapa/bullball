@@ -4,7 +4,9 @@ import {
   CreateLiquidityEventData,
   OperationStatus 
 } from '@/types/bullrhun.types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = supabase!;
 
 export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> {
   constructor() {
@@ -12,7 +14,7 @@ export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> 
   }
 
   async createLiquidityEvent(data: CreateLiquidityEventData): Promise<BullrhunLiquidityEvent> {
-    return this.create({
+    return this.createWithServiceRole({
       ...data,
       status: OperationStatus.PENDING,
     });
@@ -72,7 +74,7 @@ export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> 
   }
 
   async getTotalLiquidityProvided(mint?: string): Promise<number> {
-    let query = supabaseAdmin
+    let query = supabaseClient
       .from('bullrhun_liquidity_events')
       .select('deposit_amount_sol')
       .eq('status', OperationStatus.COMPLETED);
@@ -91,7 +93,7 @@ export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> 
   }
 
   async getTotalTokensBurned(mint?: string): Promise<number> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_liquidity_events')
       .select('burn_amount_tokens')
       .eq('status', OperationStatus.COMPLETED);
@@ -118,7 +120,7 @@ export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> 
     totalTokensBurned: number;
     averageLiquidityPerEvent: number;
   }> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_liquidity_events')
       .select('status, deposit_amount_sol, burn_amount_tokens');
 
@@ -162,7 +164,7 @@ export class LiquidityRepository extends BaseRepository<BullrhunLiquidityEvent> 
     endDate: string, 
     mint?: string
   ): Promise<BullrhunLiquidityEvent[]> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_liquidity_events')
       .select('*')
       .gte('created_at', startDate)

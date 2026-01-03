@@ -1,38 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import ClientDynamicProvider from '@/components/wallet/ClientDynamicProvider'
+import { Toaster } from "@/components/ui/sonner"
+import HydrationWrapper from '@/components/ui/hydration-wrapper'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({ 
   subsets: ["latin"],
+  weight: ['400', '500', '600', '700', '900'],
+  display: 'swap',
+  variable: '--font-inter'
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({ 
   subsets: ["latin"],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-space-grotesk'
 });
 
 export const metadata: Metadata = {
-  title: "BullRhun",
-  description: "24/7 BullRhun",
-  keywords: ["BullRhun", "solana", "meme token", "crypto", "bullrun", "pumpfun", "bitcoin"],
-  authors: [{ name: "9bapa" }],
-  icons: {
-    icon: "/logo.svg",
-  },
-  openGraph: {
-    title: "BullRhun",
-    description: "24/7 BullRhun",
-    url: "https://bullrhun.xyz",
-    siteName: "BullRhun",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "BullRhun",
-    description: "24/7 BullRhun",
-  },
+  title: "BullRhun - Meme Coin Merch Store",
+  description: "Rock the latest meme coin merch. From Doge to Pepe, Shiba to Floki - we've got your crypto swag covered!",
 };
 
 export default function RootLayout({
@@ -41,12 +30,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-      >
-        {children}
-        <Toaster />
+    <html lang="en">
+      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white font-sans`}>
+        <ClientDynamicProvider>
+          <HydrationWrapper>
+            {children}
+            <Toaster />
+          </HydrationWrapper>
+        </ClientDynamicProvider>
       </body>
     </html>
   );

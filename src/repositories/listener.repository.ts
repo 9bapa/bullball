@@ -1,7 +1,9 @@
 import { BaseRepository } from './base.repository';
 import { BullrhunListener } from '@/types/bullrhun.types';
 import { config } from '@/config';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseService } from '@/lib/supabase';
+
+const supabaseClient = supabaseService;
 
 export class ListenerRepository extends BaseRepository<BullrhunListener> {
   constructor() {
@@ -240,7 +242,7 @@ export class ListenerRepository extends BaseRepository<BullrhunListener> {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseClient
       .from(this.tableName)
       .update(updateData)
       .eq('id', 1);
@@ -256,7 +258,7 @@ export class ListenerRepository extends BaseRepository<BullrhunListener> {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from(this.tableName)
       .update(updateData)
       .eq('id', 1);
@@ -273,7 +275,7 @@ export class ListenerRepository extends BaseRepository<BullrhunListener> {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from(this.tableName)
       .update(updateData)
       .eq('id', 1);

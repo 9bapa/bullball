@@ -1,984 +1,466 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { TrendingUp, Gift, DollarSign, Activity, Clock, Zap, AlertCircle, CheckCircle, ArrowRight, Target, Trophy } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { AllProductsSection } from '@/components/merch/AllProductsSection'
+import { CartButton } from '@/components/merch/CartButton'
+import { BottomNav, SlideMenu } from '@/components/layout/mobile-nav'
+import { SharedHeader } from '@/components/layout/shared-header'
+import { TickerTape } from '@/components/ui/TickerTape'
+import { MemeCategories } from '@/components/ui/MemeCategories'
+import { Leaderboard, Achievements, QuickStats } from '@/components/ui/Gamification'
+import { useCartStore } from '@/store/cart'
+import { SubmitDesignModal } from '@/components/modals/SubmitDesignModal'
+import { BecomeVendorModal } from '@/components/modals/BecomeVendorModal'
+import { useDynamicWallet } from '@/components/wallet/DynamicWalletProvider'
+import { SharedFooter } from '@/components/layout/shared-footer'
+import { 
+  Sparkles, 
+  TrendingUp,
+  Package,
+  Star,
+  Zap,
+  ArrowRight,
+  ShoppingCart,
+  Menu,
+  Coins,
+  Trophy,
+  Target,
+  Gift
+} from 'lucide-react'
 
-// New BullRhun interfaces
-interface BullrhunMetrics {
-  total_cycles: number
-  total_fees_collected: number
-  total_trades: number
-  total_rewards_sent: number
-  current_sol_price: number
-  last_cycle_at: string | null
-  next_cycle_in: number
-  // Enhanced metrics for 11-step flow
-  total_tokens_bought: number
-  total_gifts_sent: number
-  total_sol_spent: number
-}
-
-interface TradeGoal {
-  current_goal: number
-  current_count: number
-  minimum_trade_amount: number
-  last_winner_address: string | null
-  last_winner_at: string | null
-  progress_percentage: number
-}
-
-interface BullrhunCycle {
-  id: string
-  mint: string
-  status: 'pending' | 'completed' | 'failed'
-  fee_amount_sol: number | null
-  buy_amount_sol: number | null
-  liquidity_amount_sol: number | null
-  reward_amount_sol: number | null
-  fee_signature: string | null
-  buy_signature: string | null
-  liquidity_signature: string | null
-  reward_signature: string | null
-  error_message: string | null
-  executed_at: string | null
-  created_at: string
-}
-
-interface BullrhunTrade {
-  id: string
-  mint: string
-  signature: string
-  venue: string | null
-  amount_sol: number | null
-  amount_tokens: number | null
-  price_per_token: number | null
-  trader_address: string | null
-  is_system_buy: boolean
-  cycle_id: string | null
-  created_at: string
-}
-
-interface BullrhunReward {
-  id: string
-  to_address: string
-  amount_sol: number
-  signature: string | null
-  mode: 'address' | 'last-trader'
-  created_at: string
-}
-
-interface ListenerStatus {
-  health: {
-    isHealthy: boolean
-    lastHeartbeat: string
-    minutesSinceHeartbeat: number
-    status: 'online' | 'offline'
-  }
-  monitoring: {
-    mint: string | null
-    tradeThreshold: number
-    currentTradeCount: number
-    thresholdProgress: number
-    isThresholdMet: boolean
-  }
-  stats: {
-    totalTradesMonitored: number
-    currentThreshold: number
-    currentCount: number
-    progressPercentage: number
-    estimatedNextReward: number
-  }
-}
-
-export default function BullrhunDashboard() {
-  // Local metrics state removed - now using data from API directly
-
-  // SOL price now comes from metrics API (updated by cycle service with CoinGecko)
-
-  // Cron control handlers
-  // Handlers removed - not needed for new UI
-
-  // mapApiToMetrics removed - using API data directly
-
-  const [data, setData] = useState<any>(null)
-  const [activities, setActivities] = useState<Array<{ timestamp: string; message: string; type: 'info' | 'success' | 'warning' | 'error' }>>([])
-  const [countdown, setCountdown] = useState(120)
-  const [toasts, setToasts] = useState<Array<{
-    id: string;
-    message: string;
-    type: 'step_update' | 'winner_announcement' | 'goal_reset';
-    timestamp: string;
-  }>>([])
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const [isScrollingUp, setIsScrollingUp] = useState(true);
-  // Countdown timer removed - using new API structure
-
-  // Scroll handling for header visibility
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // Determine scroll direction
-      const scrollingUp = currentScrollY < lastScrollY;
-      setIsScrollingUp(scrollingUp);
-      
-      // Hide header when scrolling down, show when scrolling up or at top
-      if (currentScrollY > 100) {
-        setIsHeaderVisible(scrollingUp);
-      } else {
-        setIsHeaderVisible(true);
-      }
-      
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+export default function StoreFront() {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('home')
+  const { items } = useCartStore()
+  const [isSubmitDesignOpen, setIsSubmitDesignOpen] = useState(false)
+  const [isBecomeVendorOpen, setIsBecomeVendorOpen] = useState(false)
+  const [tradeGameData, setTradeGameData] = useState<any>(null)
+  const { connected, publicKey } = useDynamicWallet()
 
   useEffect(() => {
-    const fetchData = async () => {
+    // Fetch trade game data for main page
+    const fetchTradeData = async () => {
       try {
         const response = await fetch('/api/bullrhun/metrics')
         const apiData = await response.json()
-        // console.log('API Response:', apiData)
-        setData(apiData)
-        setActivities(apiData.activities || [])
+        setTradeGameData(apiData)
       } catch (error) {
-        console.error('Failed to fetch metrics:', error)
+        console.error('Failed to fetch trade game data:', error)
       }
     }
-
-    // Setup Supabase real-time subscription
-    const setupBroadcastSubscription = async () => {
-      
-      try {
-        const { createClient } = await import('@supabase/supabase-js')
-        const supabaseClient = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
-        // Subscribe to real-time broadcasts for toast notifications
-        const channel = supabaseClient
-          .channel('bullrhun_broadcasts')
-          .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'bullrhun_broadcasts' },
-            (payload) => {
-              
-              // Only show important broadcasts as toasts
-              if (payload.new.message_type === 'winner_announcement' || 
-                  payload.new.message_type === 'goal_reset') {
-                
-                const toast = {
-                  id: payload.new.id,
-                  message: payload.new.message_content,
-                  type: payload.new.message_type,
-                  timestamp: payload.new.broadcast_at
-                }
-                
-                setToasts(prev => [toast, ...prev.slice(0, 4)]) // Keep latest 5 toasts
-                
-                // Auto-remove toast after 8 seconds
-                setTimeout(() => {
-                  setToasts(prev => prev.filter(t => t.id !== toast.id))
-                }, 8000)
-              }
-            }
-          )
-          .subscribe((status) => {
-            console.log('Subscription status:', status)
-          })
-
-        // No need to fetch initial broadcasts for toast system
-      } catch (error) {
-        console.error('Failed to setup broadcast subscription:', error)
-      }
-    }
-
-    // Fetch initial data
-    fetchData()
-    setupBroadcastSubscription()
     
-    return () => {
-      // Cleanup Supabase subscription when component unmounts
-    }
+    fetchTradeData()
   }, [])
 
-  // Countdown timer effect
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          return 120 // Reset to 2 minutes (120 seconds)
-        }
-        return prev - 1
-      })
-    }, 1000) // Update every second
-
-    return () => clearInterval(timer)
+    setIsLoaded(true)
+    // Set active tab based on current path
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname
+      if (path === '/') setActiveTab('home')
+      else if (path === '/explore') setActiveTab('explore')
+      else if (path === '/cart') setActiveTab('cart')
+      else if (path === '/profile') setActiveTab('profile')
+    }
   }, [])
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`
-    return num.toFixed(4)
-  }
+  const quickStats = [
+    { label: 'Products', value: '500+', icon: Package, color: 'text-meme-purple' },
+    { label: 'Coins', value: '50+', icon: Star, color: 'text-meme-blue' },
+    { label: 'Drops', value: '24/7', icon: Zap, color: 'text-meme-green' }
+  ]
 
-  const getOrdinal = (num: number) => {
-    const suffixes = ['th', 'st', 'nd', 'rd']
-    const v = num % 100
-    return suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getTimeAgo = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-    if (seconds < 60) return 'Just now'
-    if (seconds < 120) return '1 min ago'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`
-    return `${Math.floor(seconds / 3600)} hours ago`
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'text-emerald-400'
-      case 'pending': return 'text-yellow-400'
-      case 'failed': return 'text-red-400'
-      case 'online': return 'text-emerald-400'
-      case 'offline': return 'text-red-400'
-      default: return 'text-gray-400'
+  const features = [
+    {
+      icon: TrendingUp,
+      title: 'Token Buybacks',
+      description: 'Creator fees buy back tokens, creating green candles and driving price up when market is red',
+      gradient: 'bg-gradient-green',
+      stat: '40% of fees'
+    },
+    {
+      icon: ShoppingCart,
+      title: 'Liquidity Growth',
+      description: 'Creator fees add liquidity, creating strong buy signals for trading bots and market makers',
+      gradient: 'bg-gradient-blue',
+      stat: '35% of fees'
+    },
+    {
+      icon: Star,
+      title: 'Merch Revenue',
+      description: 'Merch profits buy back tokens and add liquidity, ensuring constant upward pressure',
+      gradient: 'bg-gradient-purple',
+      stat: '25% of profits'
     }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      completed: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-      pending: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-      failed: 'bg-red-500/10 border-red-500/20 text-red-400',
-      online: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-      offline: 'bg-red-500/10 border-red-500/20 text-red-400',
-    }
-    return colors[status as keyof typeof colors] || 'bg-gray-500/10 border-gray-500/20 text-gray-400'
-  }
-
-
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
+    <div className="min-h-screen bg-meme-dark text-white pb-20">
+      {/* Shared Header - Responsive */}
+      <SharedHeader 
+        onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} 
+      />
 
-      {/* Header */}
-      <header className={`
-        border-b border-emerald-500/20 backdrop-blur-sm bg-gradient-to-r from-black/40 via-black/20 to-black/40 fixed top-0 left-0 right-0 z-50 relative shadow-lg shadow-emerald-500/10
-        transition-all duration-300 ease-in-out transform
-        ${isHeaderVisible 
-          ? 'translate-y-0 opacity-100' 
-          : '-translate-y-full opacity-0'
-        }
-      `}>
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-center">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-gradient-to-r from-red-400 to-red-600 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-                <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 bg-clip-text text-transparent leading-tight tracking-wider transform hover:scale-105 transition-all duration-300" style={{ fontFamily: 'Orbitron, monospace' }}>
-                  Bull<em>Rhun</em>
-                </h1>
-                <div className="w-3 h-3 bg-gradient-to-r from-red-400 to-red-600 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-              </div>
-              <div className="text-xs font-semibold text-emerald-400/80 tracking-widest uppercase letter-spacing-wider">
-                24/7 Bull<em>rhuns</em>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Slide Menu */}
+      <SlideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-24 relative z-10" style={{ paddingTop: '90px' }}>
-        {/* Hero Section */}
-        <div className="mb-12 max-w-4xl mx-auto">
-          <div className="flex flex-col items-center justify-center">
-            {/* Hero Image */}
-            <div className="w-64 h-64 lg:w-80 lg:h-80 rounded-xl overflow-hidden transform hover:scale-105 transition-all duration-300 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-xl"></div>
-                <div className="absolute inset-1 border-2 border-slate-700/50 rounded-xl shadow-2xl shadow-black/30"></div>
-                <div className="relative w-full h-full flex items-center justify-center rounded-xl p-4 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-sm">
-                  <Image src="/bullrhun.PNG" alt="BullRhun" width={400} height={400} className="w-full h-full object-contain rounded-lg filter drop-shadow-2xl" />
-                </div>
-              </div>
-            
-          </div>
-        </div>
-
-        {/* Solana Meme Token Section */}
-        <div className="mb-8 max-w-4xl mx-auto">
-          {/* Top Divider */}
-          <div className="flex items-center justify-center mb-8">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
-            <div className="px-6">
-              <span className="text-xs font-bold text-purple-400 tracking-widest uppercase">Solana Meme Token</span>
-            </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
-          </div>
-          
-          {/* Links Grid */}
-          <div className="flex justify-center">
-            <div className="grid grid-cols-2 gap-3 max-w-xs">
-              <div className="text-center border border-emerald-500/30 rounded-lg p-4 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-300">
-                <a
-                  href="https://pump.fun/coin/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8Xpump"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
-                >
-                  2Xioa...8Xpump
-                </a>
-              </div>
-              <div className="text-center border border-blue-500/30 rounded-lg p-4 bg-blue-500/5 hover:bg-blue-500/10 transition-all duration-300">
-                <a href="https://x.com/bullrhun" target="_blank" className="flex justify-center items-center h-full">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-blue-400 hover:text-blue-300 transition-colors">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-              </div>
-            </div>
+      {/* Hero Section with Ticker - Show on all screen sizes */}
+      <section className="pt-16 md:pt-24 min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20">
+        {/* Trending Ticker */}
+        <TickerTape className="w-full" />
+        
+        {/* Hero Content */}
+        <div className="container mx-auto px-4 py-12 text-center">
+          <div className={`transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            {/* Logo and Title */}
+        <div className="mb-8">
+          <div className="w-75 h-75 rounded-2xl flex items-center justify-center mx-auto mb-4 hover-lift p-2">
+            <img 
+              src="/logo.png" 
+              alt="BullRhun Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
         
-        </div>
-
-        {/* Process Flow Section */}
-        {/* Flywheel Tek + Trader Rewards Section */}
-        <div className="mb-16 max-w-6xl mx-auto">
-          {/* Top Divider */}
-          <div className="flex items-center justify-center mb-8">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
-            <div className="px-6">
-              <span className="text-xs font-bold text-purple-400 tracking-widest uppercase">Flywheel Tek + Trader Rewards</span>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-4 font-display">
+            <span className="text-meme-gradient">Bull<span className="italic">Rhun</span></span>
+            <br />
+            <span className="text-white"><small>crypto, meme, trading merch store</small></span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Rock the latest meme-tech swag 
+          </p>
+                    {/* Trading-Themed Divider */}
+          <div className="relative mb-8 py-6">
+            {/* Main Line */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-full max-w-xs h-1 rounded-full overflow-hidden">
+                <div className="h-full flex">
+                  <div className="flex-1 bg-meme-purple"></div>
+                  <div className="flex-1 bg-meme-blue"></div>
+                  <div className="flex-1 bg-meme-green"></div>
+                  <div className="flex-1 bg-meme-orange"></div>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+            {/* Trading Dots */}
+            <div className="relative z-10 flex items-center justify-center gap-4">
+              <div className="w-4 h-4 bg-meme-purple rounded-full shadow-xl shadow-meme-purple/50 animate-pulse ring-2 ring-meme-purple/30"></div>
+              <div className="w-4 h-4 bg-meme-blue rounded-full shadow-xl shadow-meme-blue/50 ring-2 ring-meme-blue/30"></div>
+              <div className="w-4 h-4 bg-meme-green rounded-full shadow-xl shadow-meme-green/50 ring-2 ring-meme-green/30"></div>
+              <div className="w-4 h-4 bg-meme-orange rounded-full shadow-xl shadow-meme-orange/50 ring-2 ring-meme-orange/30"></div>
+            </div>
+          </div>
+        </div>
+            
+        
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              <Button 
+                size="lg" 
+                className="btn-neon-purple text-base sm:text-lg px-8"
+                onClick={() => setIsSubmitDesignOpen(true)}
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Submit Design
+              </Button>
+              <Button 
+                size="lg" 
+                className="btn-neon-green text-base sm:text-lg px-8"
+                onClick={() => setIsBecomeVendorOpen(true)}
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                Merch Vendors
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Meme Categories Section */}
+      {/* <section className="py-12 bg-black/20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-black mb-4 text-white">
+              Shop by <span className="text-meme-gradient">Coin</span>
+            </h2>
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+              Browse our massive collection of meme coin categories
+            </p>
           </div>
           
-          {/* Process Flow */}
-          <div className=" backdrop-blur-sm rounded-2xl p-8">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <p className="text-lg text-emerald-300 font-medium">Next BullRhun</p>
+          <MemeCategories /> */}
+          
+          {/* View All Button */}
+          {/* <div className="text-center mt-12">
+            <Link href="/categories">
+              <Button size="lg" className="btn-neon-blue">
+                View All Categories
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+          </div> */}
+        {/* </div>
+      </section> */}
+
+      {/* Featured Products */}
+      <section className="py-12 bg-meme-dark">
+        <div className="container mx-auto px-4">
+          
+          <AllProductsSection />
+          
+          {/* View All Button */}
+          <div className="text-center mt-12">
+            <Link href="/products">
+              <Button size="lg" className="btn-neon-purple">
+                View All Products
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* BullRhun Tokenomics Section */}
+      <section className="py-16 bg-gradient-to-br from-purple-900/30 to-blue-900/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4 text-white">
+              24/7 <span className="text-meme-gradient">Bull<span className="italic">Rhuns</span></span>
+            </h2>
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+              Every transaction fuels token growth through automated buybacks and liquidity generation
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="glass-card text-center group relative overflow-hidden">
+                <CardContent className="p-8">
+                  {/* Stat Badge */}
+                  <div className="absolute top-4 right-4">
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold text-white ${feature.gradient === 'bg-gradient-green' ? 'bg-green-500' : feature.gradient === 'bg-gradient-blue' ? 'bg-blue-500' : 'bg-purple-500'}`}>
+                      {feature.stat}
+                    </div>
+                  </div>
+                  
+                  {/* Icon */}
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${feature.gradient} group-hover:scale-110 transition-all duration-300 relative`}>
+                    <feature.icon className="w-8 h-8 text-white relative z-10" />
+                    {/* Glow Effect */}
+                    <div className={`absolute inset-0 ${feature.gradient} opacity-30 blur-xl rounded-2xl`}></div>
+                  </div>
+                  
+                  {/* Content */}
+                  <h3 className="text-xl mb-4 text-white font-bold">{feature.title}</h3>
+                  <p className="text-gray-300 leading-relaxed text-sm">{feature.description}</p>
+                  
+                  {/* Bottom Accent */}
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                      <span className="text-xs text-green-400 font-semibold">ACTIVE</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Summary */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-4 px-6 py-3 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                <span className="text-sm text-white font-semibold">
+                  100% of fees reinvested into token growth
+                </span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trade Game Section */}
+      <section className="py-16 bg-black/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-display font-bold mb-4 text-white">
+                <span className="text-meme-gradient">BullRhun</span> Trade Game
+              </h2>
+              <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+                Compete with traders - every qualifying trade counts toward the prize pot!
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              <div className="text-center mb-8">
-                <p className="text-3xl md:text-4xl font-black font-mono text-emerald-300 tracking-tight">
-                  {formatTime(countdown)}
-                </p>
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden max-w-xs">
-                    <div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-1000"
-                      style={{ width: `${((120 - countdown) / 120) * 100}%` }}
-                    ></div>
+              {/* Current Pot */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Trophy className="w-8 h-8 text-yellow-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Current Pot</h3>
+                  <div className="text-3xl font-black font-mono text-yellow-400 mb-1">
+                    {tradeGameData?.dev_wallet?.rewardBalance ? (tradeGameData.dev_wallet.rewardBalance / 1000000000).toFixed(1) : '0.0'}
+                  </div>
+                  <div className="text-sm text-gray-400">SOL Prize Pool</div>
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                      <span className="text-xs text-green-400">ACTIVE GAME</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  <span className="text-emerald-400 font-semibold">Every 2 Minutes</span> • Auto-execution cycle
-                </p>
               </div>
-              
-              <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 text-center">
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/40 rounded-lg hover:bg-emerald-500/30 transition-all duration-300">
-                  <div className="w-3 h-3 bg-emerald-400 rounded-full"></div>
-                  <span className="text-emerald-300 font-semibold">Claim Fees</span>
+
+              {/* Trade Progress */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Target className="w-8 h-8 text-meme-blue" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Trade Progress</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Current Trades:</span>
+                      <span className="text-xl font-bold text-meme-blue">{tradeGameData?.trade_goal?.current_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Goal:</span>
+                      <span className="text-xl font-bold text-white">{tradeGameData?.trade_goal?.current_goal || 100}</span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-2 mt-3">
+                      <div className="h-2 bg-gradient-to-r from-meme-purple to-meme-blue rounded-full" style={{ width: `${tradeGameData?.trade_goal?.progress_percentage || 0}%` }}></div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">53 trades to win!</div>
+                  </div>
                 </div>
-                
-                <div className="hidden md:flex text-gray-400">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-                
-                <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/40 rounded-lg hover:bg-blue-500/30 transition-all duration-300">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                  <span className="text-blue-300 font-semibold">Buy Tokens</span>
-                </div>
-                
-                <div className="hidden md:flex text-gray-400">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-                
-                <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/40 rounded-lg hover:bg-red-500/30 transition-all duration-300">
-                  <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                  <span className="text-red-300 font-semibold">Add Liquidity</span>
-                </div>
-                
-                <div className="hidden md:flex text-gray-400">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-                
-                <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/40 rounded-lg hover:bg-orange-500/30 transition-all duration-300">
-                  <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-                  <span className="text-orange-300 font-semibold">Share Profits</span>
+              </div>
+
+              {/* Last Winner */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Gift className="w-8 h-8 text-meme-purple" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Last Winner</h3>
+                  <div className="space-y-3">
+                    <div className="text-sm text-gray-400">Prize Won</div>
+                    <div className="text-2xl font-bold text-meme-purple">
+                        {tradeGameData?.trade_goal?.last_winner_address ? '2.5' : '0.0'} SOL
+                      </div>
+                    <div className="text-sm text-gray-400 mb-3">Winner Address</div>
+                    <div className="bg-black/30 rounded-lg px-3 py-2 font-mono text-xs">
+                      {tradeGameData?.trade_goal?.last_winner_address ? 
+                        `${tradeGameData.trade_goal.last_winner_address.slice(0, 4)}...${tradeGameData.trade_goal.last_winner_address.slice(-4)}` 
+                        : 'No winner yet'
+                      }
+                    </div>
+                    <div className="text-xs text-gray-400 mt-3">
+                      {tradeGameData?.trade_goal?.last_winner_at ? 
+                        `Won ${Math.floor((Date.now() - new Date(tradeGameData.trade_goal.last_winner_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`
+                        : 'No winner yet'
+                      }
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Bottom Divider */}
-          <div className="flex items-center justify-center mt-8">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
-            <div className="px-6">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-purple-400">Automated System</span>
-              </div>
-            </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
-          </div>
-        </div>
 
-        {/* Main Metrics Grid */}
-        <div className="grid gap-6 md:grid-cols-3 mb-12">
-          {/* Creator Fees Card */}
-          <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border-emerald-500/30 backdrop-blur-sm hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 group">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center justify-between text-emerald-400">
-                <span className="text-xl font-bold tracking-wide">Creator Fees</span>
-                <DollarSign className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {data && data.overview && (
-                  <>
-                <p className="text-4xl font-black font-mono text-emerald-300 tracking-tight">
-                  {formatNumber(data.overview.totalFeesCollected)} SOL
-                </p>
-
-                <p className="text-sm text-gray-400 font-medium">
-                  ${(data.overview.totalFeesCollected * data.overview.currentSolPrice).toFixed(2)} USD
-                </p>
-                </>
-                                )}
-
-                <Separator className="bg-emerald-500/20" />
-                <div className="flex items-center text-sm text-emerald-400 font-semibold">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  <span>Auto-claimed every 2 minutes</span>
+            {/* Game Info */}
+            <div className="mt-8 text-center">
+              <div className="inline-flex items-center gap-6 px-6 py-3 bg-white/5 rounded-xl border border-white/10">
+                <div className="text-sm text-gray-300">
+                  <span className="text-meme-blue font-semibold">Minimum Trade:</span> {(tradeGameData?.trade_goal?.minimum_trade_amount || 0.05).toFixed(3)} SOL to qualify
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tokens Bought Card */}
-          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/30 backdrop-blur-sm hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 group">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center justify-between text-purple-400">
-                <span className="text-xl font-bold tracking-wide">Tokens Bought</span>
-                <Zap className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {data && data.overview && (
-                <p className="text-4xl font-black font-mono text-purple-300 tracking-tight">
-                  {formatNumber(data.overview.totalTokensBought)}
-                </p>
-                )}
-                <p className="text-sm text-gray-400 font-medium">BULLBALL tokens</p>
-                <Separator className="bg-purple-500/20" />
-                <div className="flex items-center text-sm text-purple-400 font-semibold">
-                  <Activity className="w-4 h-4 mr-2" />
-                  <span>Buy Back + Liquidty</span>
+                <div className="w-px h-6 bg-white/10"></div>
+                <div className="text-sm text-gray-300">
+                  <span className="text-yellow-400 font-semibold">xth trade wins!</span> Every milestone
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Gifts Sent Card */}
-          <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/30 backdrop-blur-sm hover:border-orange-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 group">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center justify-between text-orange-400">
-                <span className="text-xl font-bold tracking-wide">Gifts Sent</span>
-                <Gift className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {data && data.overview && (
-                  <>
-                <p className="text-4xl font-black font-mono text-orange-300 tracking-tight">
-                  {formatNumber(data.overview.totalRewardsSent)} SOL
-                </p>
-                <p className="text-sm text-gray-400 font-medium">
-                  ${(data.overview.totalRewardsSent * data.overview.currentSolPrice).toFixed(2)} USD
-                </p>
-                </>
-                                )}
-
-                <Separator className="bg-orange-500/20" />
-                <div className="flex items-center text-sm text-orange-400 font-semibold">
-                  <Gift className="w-4 h-4 mr-2" />
-                  <span>xth trade wins gift</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-      {/* Trade Goal Progress */}
-      {/* Trade Game Section with Floating Header */}
-      <Card className="mb-12 relative bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border-indigo-500/30 backdrop-blur-sm overflow-hidden group">
-        {/* Floating Header */}
-        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-md border-b border-indigo-400/30 z-10 transform -translate-y-full group-hover:translate-y-0 transition-all duration-300">
-          <div className="flex items-center justify-center space-x-3 py-3">
-            <Target className="w-5 h-5 text-yellow-300 animate-pulse" />
-            <span className="text-sm font-black text-white tracking-widest uppercase">xth Trade Wins Gift</span>
-            <Trophy className="w-5 h-5 text-yellow-300 animate-pulse" />
-          </div>
-        </div>
-        
-        {/* Main Content */}
-        <CardContent className="p-6">
-          {/* Trade Goal Progress Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center space-x-2 px-4 py-2 bg-indigo-500/20 rounded-full border border-indigo-400/30">
-                <Target className="w-4 h-4 text-indigo-400" />
-                <span className="text-sm font-semibold text-indigo-300">GIFT GOAL PROGRESS</span>
-              </div>
-            </div>
-            
-            {/* Progress Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
-                <p className="text-xs text-gray-400 font-medium mb-1">Target</p>
-                <p className="text-xl font-black font-mono text-indigo-300">
-                  {data?.trade_goal?.current_goal || 100}
-                  <sup className="text-xs text-indigo-400 ml-1">{getOrdinal(data?.trade_goal?.current_goal || 100)}</sup>
-                </p>
-                <p className="text-xs text-gray-500">trade wins</p>
-              </div>
-              
-              <div className="text-center p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
-                <p className="text-xs text-gray-400 font-medium mb-1">Progress</p>
-                <p className="text-xl font-black font-mono text-purple-300">{data?.trade_goal?.current_count || 0}</p>
-                <p className="text-xs text-gray-500">current trades</p>
-              </div>
-              
-              <div className="text-center p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
-                <p className="text-xs text-gray-400 font-medium mb-1">Gift Bag</p>
-                <p className="text-xl font-black font-mono text-green-300">
-                  {formatNumber(data?.dev_wallet?.rewardBalance || 0)} SOL
-                </p>
-                <p className="text-xs text-gray-500">wallet rewards</p>
               </div>
             </div>
 
-            {/* Main Progress Bar */}
-            <div className="relative">
-              <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-1000 relative overflow-hidden"
-                  style={{ width: `${data?.trade_goal?.progress_percentage || 0}%` }}
-                >
-                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                </div>
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-gray-500">0 trades</span>
-                <span className="text-xs text-gray-500">{data?.trade_goal?.current_goal || 100} trades</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Winner & Requirements Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl border border-yellow-500/20">
-              <div className="flex items-center space-x-3 mb-3">
-                <Trophy className="w-5 h-5 text-yellow-400" />
-                <h4 className="text-sm font-bold text-yellow-300">LAST WINNER</h4>
-              </div>
-              {data?.trade_goal?.last_winner_address ? (
-                <div>
-                  <p className="text-lg font-mono text-yellow-200 font-semibold mb-1">
-                    {data.trade_goal.last_winner_address.slice(0, 4)}...{data.trade_goal.last_winner_address.slice(-4)}
-                  </p>
-                  {data.trade_goal.last_winner_at && (
-                    <p className="text-xs text-gray-400">
-                      Won at {new Date(data.trade_goal.last_winner_at).toLocaleString()}
-                    </p>
+            {/* Trade Game Wallet */}
+            <div className="mt-8">
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-r from-meme-purple to-meme-blue rounded-xl flex items-center justify-center">
+                      <Coins className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white ml-3">Trade Game Wallet</h3>
+                  </div>
+                  
+                  {connected && publicKey ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div className="text-center p-4 bg-black/30 rounded-lg">
+                        <div className="text-xs text-gray-400 mb-1">BULLRHUN Balance</div>
+                        <div className="text-lg font-mono text-meme-purple font-bold">
+                          {tradeGameData?.dev_wallet?.tokenBalance ? (tradeGameData.dev_wallet.tokenBalance / 1000000000).toFixed(2) : '0.00'}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Address: <span className="font-mono">{publicKey ? `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}` : 'Not Connected'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-center p-4 bg-black/30 rounded-lg">
+                        <div className="text-xs text-gray-400 mb-1">SOL Balance</div>
+                        <div className="text-lg font-mono text-blue-300 font-bold">
+                          {tradeGameData?.dev_wallet?.solBalance ? (tradeGameData.dev_wallet.solBalance / 1000000000).toFixed(3) : '0.000'} SOL
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Address: <span className="font-mono">{publicKey ? `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}` : 'Not Connected'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-xl text-gray-300 mb-4">Connect your wallet to see balances</div>
+                      <button className="px-6 py-3 bg-gradient-to-r from-meme-purple to-meme-blue text-white rounded-lg hover:from-meme-purple-dark hover:to-meme-blue-dark transition-all">
+                        <Coins className="w-5 h-5 mr-2" />
+                        Connect Wallet
+                      </button>
+                    </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-gray-400 italic">No winner yet - be the first!</p>
-              )}
+              </div>
             </div>
 
-            <div className="p-4 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/20">
-              <div className="flex items-center space-x-3 mb-3">
-                <Activity className="w-5 h-5 text-indigo-400" />
-                <h4 className="text-sm font-bold text-indigo-300">REQUIREMENTS</h4>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-2">Minimum Trade Amount</p>
-                <p className="text-lg font-mono text-indigo-200 font-bold">
-                  {(data?.trade_goal?.minimum_trade_amount || 0.05).toFixed(3)} SOL
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Only trades above this amount qualify</p>
-              </div>
+            {/* CTA */}
+            <div className="mt-8 text-center">
+              <Link href="/token">
+                <Button size="lg" className="bg-gradient-to-r from-meme-purple to-meme-blue hover:from-meme-purple-dark hover:to-meme-blue-dark px-8">
+                  <Trophy className="w-5 h-5 mr-2" />
+                  View Full Trade Game
+                </Button>
+              </Link>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Status Indicator */}
-          <div className="mt-4 flex items-center justify-center">
-            <div className="flex items-center space-x-2 px-3 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs font-semibold text-green-300">GAME ACTIVE</span>
-            </div>
-          </div>
-        </CardContent>
-        </Card>
-
-      {/* Toast Notifications */}
-      <div className="fixed top-1/2 right-4 z-[100] space-y-3 max-w-sm transform -translate-y-1/2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`
-              p-4 rounded-lg shadow-xl border transform transition-all duration-500
-              ${toast.type === 'winner_announcement' 
-                ? 'bg-gradient-to-r from-yellow-500/95 to-orange-500/95 border-yellow-400/50 shadow-yellow-500/30' 
-                : toast.type === 'goal_reset'
-                ? 'bg-gradient-to-r from-purple-500/95 to-indigo-500/95 border-purple-400/50 shadow-purple-500/30'
-                : 'bg-gradient-to-r from-blue-500/95 to-cyan-500/95 border-blue-400/50 shadow-blue-500/30'
-              }
-              animate-in slide-in-from-right-2
-            `}
-          >
-            <div className="flex items-start space-x-3">
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${
-                toast.type === 'winner_announcement' 
-                  ? 'bg-yellow-300 animate-pulse' 
-                  : toast.type === 'goal_reset'
-                  ? 'bg-purple-300 animate-pulse'
-                  : 'bg-blue-300 animate-pulse'
-              }`}></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-white/80">
-                    {toast.type === 'winner_announcement' 
-                      ? '🎉 WINNER!' 
-                      : toast.type === 'goal_reset'
-                      ? '🎯 NEW GOAL'
-                      : '📢 UPDATE'
-                    }
-                  </span>
-                  <span className="text-xs text-white/60">
-                    {new Date(toast.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className={`text-sm leading-relaxed ${
-                  toast.type === 'winner_announcement' 
-                    ? 'text-white font-bold' 
-                    : toast.type === 'goal_reset'
-                    ? 'text-white font-semibold'
-                    : 'text-white'
-                }`}>
-                  {toast.message}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Process Flow */}
-      <Card className="mb-12 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-sm">
-        <CardHeader className="pb-6">
-          <CardTitle className="text-2xl font-black text-center bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent tracking-wider">
-            BULL RHUN MECHANICS
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-5 text-center">
-            <div className="space-y-3 group">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto group-hover:bg-emerald-500/30 transition-colors group-hover:scale-110 transition-transform">
-                <DollarSign className="w-8 h-8 text-emerald-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-300 tracking-wide">Claim Fees</p>
-              <p className="text-xs text-emerald-400 font-mono font-semibold">Every 2 min</p>
-            </div>
-            <div className="space-y-3 group">
-              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto group-hover:bg-purple-500/30 transition-colors group-hover:scale-110 transition-transform">
-                <Zap className="w-8 h-8 text-purple-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-300 tracking-wide">Buy Tokens</p>
-              <p className="text-xs text-purple-400 font-mono font-semibold">50% of SOL</p>
-            </div>
-            <div className="space-y-3 group">
-              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto group-hover:bg-blue-500/30 transition-colors group-hover:scale-110 transition-transform">
-                <Activity className="w-8 h-8 text-blue-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-300 tracking-wide">Add Liquidity</p>
-              <p className="text-xs text-blue-400 font-mono font-semibold">Pool tokens</p>
-            </div>
-            <div className="space-y-3 group">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto group-hover:bg-red-500/30 transition-colors group-hover:scale-110 transition-transform">
-                <TrendingUp className="w-8 h-8 text-red-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-300 tracking-wide">Burn LP</p>
-              <p className="text-xs text-red-400 font-mono font-semibold">Reduce supply</p>
-            </div>
-            <div className="space-y-3 group">
-              <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto group-hover:bg-orange-500/30 transition-colors group-hover:scale-110 transition-transform">
-                <Gift className="w-8 h-8 text-orange-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-300 tracking-wide">Gift Traders</p>
-              <p className="text-xs text-orange-400 font-mono font-semibold">Random rewards</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-        {/* Activity Timeline */}
-        <Card className="mb-8 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
-              <Zap className="w-6 h-6 text-yellow-400" />
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">LIVE ACTIVITY FEED</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.length === 0 && (
-                <div className="flex items-center justify-center p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-                  <span className="text-yellow-400 font-mono font-semibold">N/A</span>
-                </div>
-              )}
-              {activities.slice(-10).reverse().map((activity, index) => (
-                <div 
-                  key={index}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${
-                    index === 0 ? 'animate-pulse shadow-lg' : ''
-                  } ${
-                      activity.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20' :
-                      activity.type === 'error' ? 'bg-red-500/10 border-red-500/20' :
-                      activity.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' :
-                      'bg-gray-500/10 border-gray-500/20'
-                    } hover:scale-[1.02]`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-3 h-3 rounded-full ${
-                        activity.type === 'success' ? 'bg-emerald-400' :
-                        activity.type === 'error' ? 'bg-red-400' :
-                        activity.type === 'warning' ? 'bg-amber-400' :
-                        'bg-gray-400'
-                    } ${
-                      index === 0 ? 'animate-pulse' : ''
-                    }`}></div>
-                    <span className="text-white font-semibold tracking-wide">{activity.message}</span>
-                  </div>
-                  <span className={`${
-                        activity.type === 'success' ? 'text-emerald-400' :
-                        activity.type === 'error' ? 'text-red-400' :
-                        activity.type === 'warning' ? 'text-amber-400' :
-                        'text-gray-400'
-                    } text-sm font-mono font-semibold`}>
-                    {getTimeAgo(activity.timestamp)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-8 bg-gradient-to-r from-yellow-500/10 to-emerald-500/10 border-yellow-500/30 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
-              <Activity className="w-6 h-6 text-emerald-400" />
-              <span className="bg-gradient-to-r from-emerald-400 to-yellow-400 bg-clip-text text-transparent">TRADE HISTORY</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div 
-              className="space-y-3 max-h-96 overflow-y-auto scrollbar-hide"
-              style={{
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none'
-              }}
-            >
-              {data?.recent?.trades?.length === 0 && (
-                <div className="flex items-center justify-center p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                  <span className="text-emerald-400 font-mono font-semibold">N/A</span>
-                </div>
-              )}
-              {data?.recent?.trades?.map(t => (
-                <div key={t.signature} className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-300">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <a
-                        href={`https://solscan.io/tx/${t.signature}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-white font-semibold tracking-wide hover:text-emerald-400 transition-colors underline"
-                      >
-                        {t.signature.slice(0, 8)}...{t.signature.slice(-8)}
-                      </a>
-                      <p className="text-emerald-400 text-xs font-mono">{t.venue || 'pump'}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-300 font-mono">
-                      {t.amountSol != null ? `${t.amountSol?.toFixed?.(4)} SOL` : t.amountTokens != null ? `${t.amountTokens} tokens` : '—'}
-                    </p>
-                    <p className="text-xs text-gray-400">{getTimeAgo(t.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-
-
-        <Card className="mb-8 bg-gradient-to-r from-blue-500/10 to-red-500/10 border-blue-500/30 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center justify-center space-x-3 text-xl font-black tracking-wider">
-              <Activity className="w-6 h-6 text-blue-400" />
-              <span className="bg-gradient-to-r from-blue-400 to-red-400 bg-clip-text text-transparent">LIQUIDITY & BURN HISTORY</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-hide">
-              <div className="text-center text-blue-400 text-sm p-8">
-                Liquidity data will be available soon
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-         {/* Gift History Section */}
-        <Card className="mb-8 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex flex-col items-center text-xl font-black tracking-wider">
-              <div className="flex items-center space-x-3">
-                <Gift className="w-6 h-6 text-orange-400" />
-                <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">GIFT HISTORY</span>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-hide">
-              {data?.recent?.rewards?.length === 0 && (
-                <div className="flex items-center justify-center p-4 rounded-xl border border-orange-500/20 bg-orange-500/5">
-                  <span className="text-orange-400 font-mono font-semibold">N/A</span>
-                </div>
-              )}
-              {data?.recent?.rewards?.slice(-10).reverse().map(g => (
-                <div 
-                  key={g.id}
-                  className="flex items-center justify-between p-4 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 transition-all duration-300 hover:scale-[1.02]"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
-                      <Gift className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold tracking-wide">{g.trader.slice(0, 8)}...{g.trader.slice(-8)}</p>
-                      <p className="text-orange-400 text-xs font-mono">
-                        <a
-                          href={`https://solscan.io/tx/${g.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-orange-300 underline"
-                        >
-                          {g.txHash.slice(0, 8)}...{g.txHash.slice(-8)}
-                        </a>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono text-orange-300">
-                      {g.amount.toFixed(3)} SOL
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {getTimeAgo(g.timestamp)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 backdrop-blur-sm">
-          <CardContent>
-            <div className="text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Developer Wallet Address</p>
-              <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
-                <a
-                  href={`https://solscan.io/account/${data?.dev_wallet?.address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
-                >
-                  {data?.dev_wallet?.address || 'N/A'}
-                </a>
-              </div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4 mt-4">Gift Address</p>
-              <div className="col-span-3 border-2 border-dashed border-blue-500/50 rounded-lg p-4 bg-blue-500/5">
-                <a
-                  href={`https://solscan.io/account/${data?.dev_wallet?.rewardAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 font-mono font-semibold text-lg break-all hover:text-blue-300 transition-colors"
-                >
-                  {data?.dev_wallet?.rewardAddress || 'N/A'}
-                </a>
-              </div>
-            </div>
-            <div className="text-center mt-10">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Creator Rewards Split</p>
-              <p className="text-2xl font-bold font-mono text-orange-300">
-                Buy Back: 78%
-                Dev: 12%:
-                Gift: 10
-              </p>
-              <p className="text-sm text-gray-400 mt-3">
-                Buy backs during bonding curve are held to pay for dex & other marketing
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-      </main>
-              {/* Footer */}
-        <footer className="relative border-t border-emerald-500/20 backdrop-blur-sm bg-black/40 mt-10">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-sm">
-              <p className="text-gray-400 font-mono text-xs text-center">copyright © 2024 Bullrhun. All rights reserved. Not financial service</p>
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-emerald-400 font-bold tracking-wide text-center">24/7 Bull<em>Rhun</em></span>
-              </div>
-            </div>
-          </div>
-        </footer>
+      {/* Bottom Navigation - Mobile Only */}
+      <BottomNav activeTab={activeTab} />
+      
+      {/* Shared Footer */}
+      <SharedFooter />
+      
+      {/* Modals */}
+      <SubmitDesignModal 
+        isOpen={isSubmitDesignOpen} 
+        onClose={() => setIsSubmitDesignOpen(false)} 
+      />
+      <BecomeVendorModal 
+        isOpen={isBecomeVendorOpen} 
+        onClose={() => setIsBecomeVendorOpen(false)} 
+      />
     </div>
   )
 }

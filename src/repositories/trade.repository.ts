@@ -4,7 +4,9 @@ import {
   CreateTradeData, 
   TradeQueryOptions 
 } from '@/types/bullrhun.types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = supabase!;
 
 export class TradeRepository extends BaseRepository<BullrhunTrade> {
   constructor() {
@@ -12,7 +14,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
   }
 
   async createTrade(data: CreateTradeData): Promise<BullrhunTrade> {
-    return this.create(data);
+    return this.createWithServiceRole(data);
   }
 
   async findByMint(
@@ -78,7 +80,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     endDate: string, 
     mint?: string
   ): Promise<number> {
-    let query = supabaseAdmin
+    let query = supabaseClient
       .from('bullrhun_trades')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate)
@@ -102,7 +104,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     totalTokens: number;
     tradeCount: number;
   }> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_trades')
       .select('amount_sol, amount_tokens');
 
@@ -137,7 +139,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     volumeSol: number;
     volumeTokens: number;
   }>> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_trades')
       .select('venue, amount_sol, amount_tokens')
       .eq('mint', mint);
@@ -175,7 +177,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     totalVolumeTokens: number;
     averageTradeSizeSol: number;
   }> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_trades')
       .select('amount_sol, amount_tokens, is_system_buy');
 
@@ -205,7 +207,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
   }
 
   async getLastTrade(mint?: string): Promise<BullrhunTrade | null> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_trades')
       .select('*')
       .order('created_at', { ascending: false })
@@ -229,7 +231,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     endDate: string,
     mint?: string
   ): Promise<BullrhunTrade[]> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_trades')
       .select('*')
       .gte('created_at', startDate)
@@ -253,7 +255,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
     trader_address: string;
     trade_amount_sol: number;
   } | null> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_trades')
       .select('trader_address, amount_sol')
       .gte('amount_sol', minAmount)
@@ -284,7 +286,7 @@ export class TradeRepository extends BaseRepository<BullrhunTrade> {
   }
 
   async getTotalTrades(mint?: string): Promise<number> {
-    let query = supabaseAdmin
+    let query = supabase
       .from('bullrhun_trades')
       .select('*', { count: 'exact', head: true });
 

@@ -1,6 +1,8 @@
 import { BaseRepository } from './base.repository';
 import { BullrhunMetrics } from '@/types/bullrhun.types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = (supabase)!;
 
 export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
   constructor() {
@@ -8,7 +10,7 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
   }
 
   async getMetrics(): Promise<BullrhunMetrics> {
-    const metrics = await this.findById(1);
+    const metrics = await this.findByIdWithServiceRole(1);
     return metrics || {
       id: 1,
       total_cycles: 0,
@@ -31,7 +33,7 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
       updated_at: new Date().toISOString(),
     };
 
-    return this.upsert(updateData, ['id']);
+    return this.upsertWithServiceRole(updateData, ['id']);
   }
 
   async incrementCycles(): Promise<BullrhunMetrics> {
@@ -162,7 +164,7 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
   private async getCyclesInLast24h(): Promise<number> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    const { count, error } = await supabaseAdmin
+    const { count, error } = await supabaseClient
       .from('bullrhun_cycles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', twentyFourHoursAgo)
@@ -178,7 +180,7 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
   private async getErrorRate(): Promise<number> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseClient
       .from('bullrhun_cycles')
       .select('status')
       .gte('created_at', twentyFourHoursAgo);

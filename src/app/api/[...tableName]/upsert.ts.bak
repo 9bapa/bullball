@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseService } from '@/lib/supabase';
+
+export async function POST(request: NextRequest, { params }) {
+  try {
+    const { data, conflictColumns } = await request.json();
+    const tableName = params.tableName;
+
+    if (!data || !tableName) {
+      return NextResponse.json(
+        { error: 'Data and tableName are required' },
+        { status: 400 }
+      );
+    }
+
+    // Build table name with prefix
+    const fullTableName = `bullrhun_${tableName}`;
+
+    // Upsert using service role
+    const { result, error } = await supabaseService
+      .from(fullTableName)
+      .upsert(data, { 
+        onConflict: conflictColumns && conflictColumns.length > 0 ? conflictColumns.join(',') : undefined 
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Failed to upsert in ${fullTableName}:`, error);
+      return NextResponse.json(
+        { error: `Failed to upsert in ${tableName}`, details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { 
+        message: `${tableName} upserted successfully`,
+        data: result
+      },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('Upsert error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

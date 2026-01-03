@@ -3,7 +3,9 @@ import {
   BullrhunReward, 
   CreateRewardData 
 } from '@/types/bullrhun.types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = supabase!;
 
 export class RewardRepository extends BaseRepository<BullrhunReward> {
   constructor() {
@@ -11,7 +13,7 @@ export class RewardRepository extends BaseRepository<BullrhunReward> {
   }
 
   async createReward(data: CreateRewardData): Promise<BullrhunReward> {
-    return this.create(data);
+    return this.createWithServiceRole(data);
   }
 
   async findByCycleId(cycleId: string): Promise<BullrhunReward[]> {
@@ -33,7 +35,7 @@ export class RewardRepository extends BaseRepository<BullrhunReward> {
   }
 
   async getTotalRewardsSent(): Promise<number> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseClient
       .from('bullrhun_rewards')
       .select('amount_sol');
 
@@ -56,7 +58,7 @@ export class RewardRepository extends BaseRepository<BullrhunReward> {
     startDate: string, 
     endDate: string
   ): Promise<BullrhunReward[]> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_rewards')
       .select('*')
       .gte('created_at', startDate)
@@ -77,7 +79,7 @@ export class RewardRepository extends BaseRepository<BullrhunReward> {
     lastTraderRewards: number;
     addressRewards: number;
   }> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('bullrhun_rewards')
       .select('amount_sol, to_address, mode');
 

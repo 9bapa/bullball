@@ -7,3 +7,4 @@ export { MetricsRepository } from './metrics.repository';
 export { ListenerRepository } from './listener.repository';
 export { LeaderRepository } from './leader.repository';
 export { BroadcastRepository } from './broadcast.repository';
+export { TokenRepository } from './token.repository';

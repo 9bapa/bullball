@@ -1,0 +1,3184 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.6
+-- Dumped by pg_dump version 17.0
+
+-- Started on 2026-01-02 21:29:59 EST
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+
+--
+-- Drop all existing tables for fresh install
+DROP TABLE IF EXISTS public.bullrhun_user_designs CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_user_addresses CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_user_sessions CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_user_activity CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_inventory_log CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_orders CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_order_items CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_vendor_orders CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_vendor_order_items CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_product_reviews CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_product_variants CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_products CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_vendors CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_shipping_rates CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_rewards CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_liquidity_events CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_listeners CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_leaders CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_metrics CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_cycles CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_trades CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_tokens CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_broadcasts CASCADE;
+DROP TABLE IF EXISTS public.bullrhun_users CASCADE;
+
+-- Drop existing types (drop in dependency order)
+DROP TYPE IF EXISTS public.cycle_status CASCADE;
+DROP TYPE IF EXISTS public.inventory_change_type CASCADE;
+DROP TYPE IF EXISTS public.liquidity_status CASCADE;
+DROP TYPE IF EXISTS public.operation_status CASCADE;
+DROP TYPE IF EXISTS public.order_status CASCADE;
+DROP TYPE IF EXISTS public.reward_mode CASCADE;
+DROP TYPE IF EXISTS public.shipping_method CASCADE;
+DROP TYPE IF EXISTS public.user_role CASCADE;
+DROP TYPE IF EXISTS public.vendor_order_status CASCADE;
+DROP TYPE IF EXISTS public.product_type CASCADE;
+
+-- Drop existing functions
+DROP FUNCTION IF EXISTS public.cleanup_expired_sessions() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_order_number() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_vendor_order_number() CASCADE;
+DROP FUNCTION IF EXISTS public.get_or_create_user(text, text, text, text, text, public.user_role) CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_orders(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.is_admin(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.log_order_user_action() CASCADE;
+DROP FUNCTION IF EXISTS public.update_inventory_on_sale() CASCADE;
+DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS public.update_user_login(uuid, inet, text) CASCADE;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 128 (class 2615 OID 2200)
+-- Name: public; Type: SCHEMA; Schema: -; Owner: pg_database_owner
+--
+
+CREATE SCHEMA IF NOT EXISTS public;
+
+
+ALTER SCHEMA public OWNER TO pg_database_owner;
+
+--
+-- TOC entry 4323 (class 0 OID 0)
+-- Dependencies: 128
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: pg_database_owner
+--
+
+COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- TOC entry 1282 (class 1247 OID 20677)
+-- Name: cycle_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.cycle_status AS ENUM (
+    'pending',
+    'completed',
+    'failed'
+);
+
+
+ALTER TYPE public.cycle_status OWNER TO postgres;
+
+--
+-- TOC entry 1321 (class 1247 OID 23498)
+-- Name: inventory_change_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.inventory_change_type AS ENUM (
+    'sale',
+    'purchase',
+    'adjustment',
+    'return'
+);
+
+
+ALTER TYPE public.inventory_change_type OWNER TO postgres;
+
+--
+-- TOC entry 1275 (class 1247 OID 17488)
+-- Name: liquidity_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.liquidity_status AS ENUM (
+    'planned',
+    'executed',
+    'skipped',
+    'failed'
+);
+
+
+ALTER TYPE public.liquidity_status OWNER TO postgres;
+
+--
+-- TOC entry 1285 (class 1247 OID 20684)
+-- Name: operation_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.operation_status AS ENUM (
+    'pending',
+    'completed',
+    'failed'
+);
+
+
+ALTER TYPE public.operation_status OWNER TO postgres;
+
+--
+-- TOC entry 1315 (class 1247 OID 23471)
+-- Name: order_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.order_status AS ENUM (
+    'pending',
+    'paid',
+    'processing',
+    'shipped',
+    'delivered',
+    'cancelled',
+    'refunded'
+);
+
+
+ALTER TYPE public.order_status OWNER TO postgres;
+
+--
+-- TOC entry 1324 (class 1247 OID 23508)
+-- Name: product_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.product_type AS ENUM (
+    'sticker',
+    'hoodie',
+    'shirt',
+    'hat',
+    'accessory',
+    'socks',
+    'mug',
+    'cup',
+    'apparel',
+    'poster',
+    'bag',
+    'phone_case',
+    'towel',
+    'blanket'
+);
+
+
+ALTER TYPE public.product_type OWNER TO postgres;
+
+--
+-- TOC entry 1272 (class 1247 OID 17483)
+-- Name: reward_mode; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.reward_mode AS ENUM (
+    'address',
+    'last-trader'
+);
+
+
+ALTER TYPE public.reward_mode OWNER TO postgres;
+
+--
+-- TOC entry 1327 (class 1247 OID 23520)
+-- Name: shipping_method; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.shipping_method AS ENUM (
+    'standard',
+    'rush',
+    'express'
+);
+
+
+ALTER TYPE public.shipping_method OWNER TO postgres;
+
+--
+-- TOC entry 1360 (class 1247 OID 23802)
+-- Name: user_role; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.user_role AS ENUM (
+    'customer',
+    'admin',
+    'super_admin'
+);
+
+
+ALTER TYPE public.user_role OWNER TO postgres;
+
+--
+-- TOC entry 1318 (class 1247 OID 23486)
+-- Name: vendor_order_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.vendor_order_status AS ENUM (
+    'pending',
+    'confirmed',
+    'shipped',
+    'received',
+    'cancelled'
+);
+
+
+ALTER TYPE public.vendor_order_status OWNER TO postgres;
+
+--
+-- TOC entry 502 (class 1255 OID 23913)
+-- Name: cleanup_expired_sessions(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- Session cleanup function removed - using Web3 wallet authentication only
+
+
+-- Session cleanup function owner removed - function dropped
+
+--
+-- TOC entry 541 (class 1255 OID 23791)
+-- Name: generate_order_number(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.generate_order_number() RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  order_num TEXT;
+BEGIN
+  LOOP
+    order_num := 'BR-' || to_char(now(), 'YYYY') || '-' || lpad(floor(random() * 10000)::text, 4, '0');
+    IF NOT EXISTS (SELECT 1 FROM bullrhun_orders WHERE order_number = order_num) THEN
+      EXIT;
+    END IF;
+  END LOOP;
+  RETURN order_num;
+END;
+$$;
+
+
+ALTER FUNCTION public.generate_order_number() OWNER TO postgres;
+
+--
+-- TOC entry 498 (class 1255 OID 23792)
+-- Name: generate_vendor_order_number(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.generate_vendor_order_number() RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  order_num TEXT;
+BEGIN
+  LOOP
+    order_num := 'PO-' || to_char(now(), 'YYYY') || '-' || lpad(floor(random() * 10000)::text, 4, '0');
+    IF NOT EXISTS (SELECT 1 FROM bullrhun_vendor_orders WHERE order_number = order_num) THEN
+      EXIT;
+    END IF;
+  END LOOP;
+  RETURN order_num;
+END;
+$$;
+
+
+ALTER FUNCTION public.generate_vendor_order_number() OWNER TO postgres;
+
+--
+-- TOC entry 512 (class 1255 OID 23910)
+-- Name: get_or_create_user(text, text, text, text, text, public.user_role); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- Email-based user creation removed - using Web3 wallet authentication only
+
+--
+-- TOC entry 499 (class 1255 OID 23916)
+-- Name: get_user_orders(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- User orders function removed - using wallet_address based queries
+
+--
+-- TOC entry 542 (class 1255 OID 23930)
+-- Name: get_wallet_from_auth(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_wallet_from_auth() RETURNS text
+    LANGUAGE sql
+    AS $$
+    SELECT wallet_address FROM bullrhun_users 
+    WHERE id = auth.uid()
+    LIMIT 1;
+$$;
+
+
+ALTER FUNCTION public.get_wallet_from_auth() OWNER TO postgres;
+
+--
+-- TOC entry 543 (class 0 OID 0)
+-- Dependencies: 542
+-- Name: FUNCTION get_wallet_from_auth(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.get_wallet_from_auth() TO anon;
+GRANT ALL ON FUNCTION public.get_wallet_from_auth() TO authenticated;
+GRANT ALL ON FUNCTION public.get_wallet_from_auth() TO service_role;
+
+--
+-- TOC entry 424 (class 1255 OID 23911)
+-- Name: is_admin(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- is_admin function removed - using wallet-based authentication
+
+
+-- is_admin function owner removed - function dropped
+
+--
+-- TOC entry 543 (class 1255 OID 23922)
+-- Name: log_order_user_action(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- Order activity logging removed - using blockchain transaction tracking instead
+
+
+-- log_order_user_action function owner removed - function dropped
+
+--
+-- TOC entry 437 (class 1255 OID 23789)
+-- Name: update_inventory_on_sale(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.update_inventory_on_sale() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Update stock quantity when order is placed
+  UPDATE bullrhun_product_variants 
+  SET stock_quantity = stock_quantity - NEW.quantity
+  WHERE id = NEW.variant_id;
+  
+  -- Log the inventory change
+  INSERT INTO bullrhun_inventory_log (variant_id, change_type, quantity_change, quantity_before, quantity_after, reason, reference_id)
+  SELECT 
+    NEW.variant_id,
+    'sale',
+    -NEW.quantity,
+    stock_quantity + NEW.quantity,
+    stock_quantity,
+    'Order #' || NEW.order_id,
+    NEW.order_id
+  FROM bullrhun_product_variants
+  WHERE id = NEW.variant_id;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_inventory_on_sale() OWNER TO postgres;
+
+--
+-- TOC entry 423 (class 1255 OID 23793)
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_updated_at_column() OWNER TO postgres;
+
+--
+-- TOC entry 474 (class 1255 OID 23912)
+-- Name: update_user_login(uuid, inet, text); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+-- User login tracking removed - using Web3 wallet authentication instead
+
+
+-- update_user_login function owner removed - function dropped
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 399 (class 1259 OID 23593)
+-- Name: bullrhun_orders; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    order_number text NOT NULL,
+    customer_wallet_address text NOT NULL,
+    customer_name text,
+    customer_phone text,
+    billing_address text NOT NULL,
+    billing_city text NOT NULL,
+    billing_state text,
+    billing_zip text,
+    billing_country text NOT NULL,
+    shipping_address text,
+    shipping_city text,
+    shipping_state text,
+    shipping_zip text,
+    shipping_country text,
+    subtotal numeric(38,2) NOT NULL,
+    tax_amount numeric(38,2) DEFAULT 0,
+    shipping_cost numeric(38,2) NOT NULL,
+    total_amount numeric(38,2) NOT NULL,
+    shipping_method public.shipping_method NOT NULL,
+    shipping_carrier text,
+    tracking_number text,
+    tracking_url text,
+    estimated_delivery timestamp with time zone,
+    status public.order_status DEFAULT 'pending'::public.order_status NOT NULL,
+    payment_method text DEFAULT 'crypto'::text NOT NULL,
+    solana_payment_address text,
+    solana_private_key text, -- Store private key for payment processing
+    solana_payment_signature text,
+    payment_amount_sol numeric(38,9),
+    payment_confirmed_at timestamp with time zone,
+    notes text,
+    internal_notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_orders_payment_method_check CHECK ((payment_method = ANY (ARRAY['crypto'::text, 'card'::text, 'paypal'::text]))),
+    CONSTRAINT bullrhun_orders_shipping_cost_check CHECK ((shipping_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_orders_subtotal_check CHECK ((subtotal >= (0)::numeric)),
+    CONSTRAINT bullrhun_orders_tax_amount_check CHECK ((tax_amount >= (0)::numeric)),
+    CONSTRAINT bullrhun_orders_total_amount_check CHECK ((total_amount >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_orders OWNER TO postgres;
+
+--
+-- TOC entry 4335 (class 0 OID 0)
+-- Dependencies: 399
+-- Name: COLUMN bullrhun_orders.customer_email; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+-- Email field removed - using customer_wallet_address for crypto-native identification
+
+
+--
+-- TOC entry 406 (class 1259 OID 23809)
+-- Name: bullrhun_users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    wallet_address text NOT NULL,
+    username text,
+    display_name text,
+    avatar_url text,
+    bio text,
+    email text,
+    role public.user_role DEFAULT 'customer'::public.user_role,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    admin_notes text,
+    permissions text[],
+    CONSTRAINT users_email_check CHECK ((email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text OR email IS NULL)),
+    CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['customer'::public.user_role, 'admin'::public.user_role, 'super_admin'::public.user_role]))),
+    CONSTRAINT users_wallet_address_not_null CHECK ((wallet_address IS NOT NULL))
+);
+
+
+ALTER TABLE public.bullrhun_users OWNER TO postgres;
+
+--
+-- TOC entry 4337 (class 0 OID 0)
+-- Dependencies: 406
+-- Name: TABLE bullrhun_users; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.bullrhun_users IS 'User accounts with role-based access control';
+
+
+--
+-- TOC entry 410 (class 1259 OID 23917)
+-- Name: admin_order_summary; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.admin_order_summary AS
+ SELECT o.id,
+    o.order_number,
+    o.total_amount,
+    o.status,
+    o.created_at,
+    u.email AS customer_email,
+    u.username,
+    u.display_name,
+    u.role AS customer_role,
+        CASE
+            WHEN (u.role = ANY (ARRAY['admin'::public.user_role, 'super_admin'::public.user_role])) THEN true
+            ELSE false
+        END AS is_admin_order
+   FROM (public.bullrhun_orders o
+     LEFT JOIN public.bullrhun_users u ON ((o.customer_wallet_address = u.wallet_address)))
+  ORDER BY o.created_at DESC;
+
+
+ALTER VIEW public.admin_order_summary OWNER TO postgres;
+
+--
+-- TOC entry 395 (class 1259 OID 20910)
+-- Name: bullrhun_broadcasts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_broadcasts (
+    id bigint NOT NULL,
+    message_type character varying(50) NOT NULL,
+    message_content text NOT NULL,
+    related_cycle_id uuid,
+    metadata jsonb,
+    broadcast_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.bullrhun_broadcasts OWNER TO postgres;
+
+--
+-- TOC entry 394 (class 1259 OID 20909)
+-- Name: bullrhun_broadcasts_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.bullrhun_broadcasts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.bullrhun_broadcasts_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 4341 (class 0 OID 0)
+-- Dependencies: 394
+-- Name: bullrhun_broadcasts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.bullrhun_broadcasts_id_seq OWNED BY public.bullrhun_broadcasts.id;
+
+
+--
+-- TOC entry 387 (class 1259 OID 20702)
+-- Name: bullrhun_cycles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_cycles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    mint text NOT NULL,
+    fee_signature text,
+    buy_signature text,
+    liquidity_signature text,
+    burn_signature text,
+    reward_signature text,
+    fee_amount_sol numeric(38,9),
+    buy_amount_sol numeric(38,9),
+    liquidity_amount_sol numeric(38,9),
+    reward_amount_sol numeric(38,9),
+    status public.cycle_status DEFAULT 'pending'::public.cycle_status,
+    error_message text,
+    executed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    step_number integer DEFAULT 1,
+    total_steps integer DEFAULT 11,
+    last_step_at timestamp with time zone,
+    status_updated_at timestamp with time zone,
+    CONSTRAINT bullrhun_cycles_buy_amount_sol_check CHECK ((buy_amount_sol >= (0)::numeric)),
+    CONSTRAINT bullrhun_cycles_fee_amount_sol_check CHECK ((fee_amount_sol >= (0)::numeric)),
+    CONSTRAINT bullrhun_cycles_liquidity_amount_sol_check CHECK ((liquidity_amount_sol >= (0)::numeric)),
+    CONSTRAINT bullrhun_cycles_reward_amount_sol_check CHECK ((reward_amount_sol >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_cycles OWNER TO postgres;
+
+--
+-- TOC entry 404 (class 1259 OID 23713)
+-- Name: bullrhun_inventory_log; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_inventory_log (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    variant_id uuid,
+    change_type public.inventory_change_type NOT NULL,
+    quantity_change integer NOT NULL,
+    quantity_before integer NOT NULL,
+    quantity_after integer NOT NULL,
+    reason text,
+    reference_id uuid,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.bullrhun_inventory_log OWNER TO postgres;
+
+--
+-- TOC entry 393 (class 1259 OID 20861)
+-- Name: bullrhun_leaders; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_leaders (
+    id integer DEFAULT 1 NOT NULL,
+    instance_id text NOT NULL,
+    heartbeat timestamp with time zone DEFAULT now(),
+    is_active boolean DEFAULT true,
+    last_activity timestamp with time zone DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.bullrhun_leaders OWNER TO postgres;
+
+--
+-- TOC entry 390 (class 1259 OID 20763)
+-- Name: bullrhun_liquidity_events; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_liquidity_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    cycle_id uuid,
+    mint text NOT NULL,
+    pool_key text,
+    deposit_amount_sol numeric(38,9),
+    deposit_signature text,
+    burn_amount_tokens numeric(38,0),
+    burn_signature text,
+    status public.operation_status DEFAULT 'pending'::public.operation_status,
+    error_message text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_liquidity_events_burn_amount_tokens_check CHECK ((burn_amount_tokens >= (0)::numeric)),
+    CONSTRAINT bullrhun_liquidity_events_deposit_amount_sol_check CHECK ((deposit_amount_sol >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_liquidity_events OWNER TO postgres;
+
+--
+-- TOC entry 392 (class 1259 OID 20797)
+-- Name: bullrhun_listeners; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_listeners (
+    id integer DEFAULT 1 NOT NULL,
+    monitored_mint text,
+    last_heartbeat timestamp with time zone DEFAULT now(),
+    total_trades_monitored integer DEFAULT 0,
+    current_trade_threshold integer DEFAULT 30,
+    current_trade_count integer DEFAULT 0,
+    updated_at timestamp with time zone DEFAULT now(),
+    trade_goal integer DEFAULT 100,
+    minimum_trade_amount numeric(10,8) DEFAULT 0.05,
+    last_winner_address character varying(255),
+    last_winner_at timestamp with time zone
+);
+
+
+ALTER TABLE public.bullrhun_listeners OWNER TO postgres;
+
+--
+-- TOC entry 391 (class 1259 OID 20785)
+-- Name: bullrhun_metrics; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_metrics (
+    id integer DEFAULT 1 NOT NULL,
+    total_cycles integer DEFAULT 0,
+    total_fees_collected numeric(38,9) DEFAULT 0,
+    total_trades integer DEFAULT 0,
+    total_rewards_sent numeric(38,9) DEFAULT 0,
+    current_sol_price numeric(38,9) DEFAULT 0,
+    last_cycle_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now(),
+    total_tokens_bought bigint DEFAULT 0,
+    total_gifts_sent bigint DEFAULT 0,
+    total_sol_spent numeric(20,8) DEFAULT 0
+);
+
+
+ALTER TABLE public.bullrhun_metrics OWNER TO postgres;
+
+--
+-- TOC entry 400 (class 1259 OID 23615)
+-- Name: bullrhun_order_items; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_order_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    order_id uuid,
+    product_id uuid,
+    variant_id uuid,
+    vendor_id uuid,
+    quantity integer NOT NULL,
+    unit_price numeric(38,2) NOT NULL,
+    total_price numeric(38,2) NOT NULL,
+    unit_cost numeric(38,2),
+    total_cost numeric(38,2),
+    status text DEFAULT 'pending'::text,
+    vendor_order_id text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_order_items_quantity_check CHECK ((quantity > 0)),
+    CONSTRAINT bullrhun_order_items_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'ordered_from_vendor'::text, 'received'::text, 'shipped_to_customer'::text]))),
+    CONSTRAINT bullrhun_order_items_total_cost_check CHECK ((total_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_order_items_total_price_check CHECK ((total_price >= (0)::numeric)),
+    CONSTRAINT bullrhun_order_items_unit_cost_check CHECK ((unit_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_order_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_order_items OWNER TO postgres;
+
+--
+-- TOC entry 405 (class 1259 OID 23727)
+-- Name: bullrhun_product_reviews; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_product_reviews (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    product_id uuid,
+    order_id uuid,
+    customer_name text,
+    rating integer,
+    title text,
+    review text,
+    is_verified boolean DEFAULT false,
+    is_approved boolean DEFAULT false,
+    helpful_count integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_product_reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)))
+);
+
+
+ALTER TABLE public.bullrhun_product_reviews OWNER TO postgres;
+
+--
+-- TOC entry 398 (class 1259 OID 23566)
+-- Name: bullrhun_product_variants; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_product_variants (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    product_id uuid,
+    color text,
+    size text,
+    sku text NOT NULL,
+    price_adjustment numeric(38,2) DEFAULT 0,
+    cost_adjustment numeric(38,2) DEFAULT 0,
+    stock_quantity integer DEFAULT 0,
+    reorder_level integer DEFAULT 10,
+    weight_adjustment numeric(5,2) DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_product_variants_cost_adjustment_check CHECK ((cost_adjustment >= (0)::numeric)),
+    CONSTRAINT bullrhun_product_variants_price_adjustment_check CHECK ((price_adjustment >= (0)::numeric)),
+    CONSTRAINT bullrhun_product_variants_reorder_level_check CHECK ((reorder_level >= 0)),
+    CONSTRAINT bullrhun_product_variants_stock_quantity_check CHECK ((stock_quantity >= 0)),
+    CONSTRAINT bullrhun_product_variants_weight_adjustment_check CHECK ((weight_adjustment >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_product_variants OWNER TO postgres;
+
+--
+-- TOC entry 397 (class 1259 OID 23544)
+-- Name: bullrhun_products; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_products (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    vendor_id uuid,
+    name text NOT NULL,
+    description text,
+    type public.product_type NOT NULL,
+    base_price numeric(38,2) NOT NULL,
+    cost_price numeric(38,2),
+    image_url text,
+    gallery_urls text[],
+    weight_lbs numeric(5,2),
+    dimensions text,
+    sku text,
+    is_active boolean DEFAULT true,
+    is_featured boolean DEFAULT false,
+    tags text[],
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_products_base_price_check CHECK ((base_price >= (0)::numeric)),
+    CONSTRAINT bullrhun_products_cost_price_check CHECK ((cost_price >= (0)::numeric)),
+    CONSTRAINT bullrhun_products_weight_lbs_check CHECK ((weight_lbs >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_products OWNER TO postgres;
+
+--
+-- TOC entry 389 (class 1259 OID 20746)
+-- Name: bullrhun_rewards; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_rewards (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    cycle_id uuid,
+    to_address text NOT NULL,
+    amount_sol numeric(38,9),
+    signature text,
+    mode public.reward_mode NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_rewards_amount_sol_check CHECK ((amount_sol > (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_rewards OWNER TO postgres;
+
+--
+-- TOC entry 401 (class 1259 OID 23651)
+-- Name: bullrhun_shipping_rates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_shipping_rates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    method public.shipping_method NOT NULL,
+    carrier text,
+    base_cost numeric(38,2) NOT NULL,
+    cost_per_lb numeric(38,2) DEFAULT 0,
+    free_shipping_threshold numeric(38,2),
+    description text,
+    estimated_days text,
+    max_weight_lbs numeric(5,2),
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_shipping_rates_base_cost_check CHECK ((base_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_shipping_rates_cost_per_lb_check CHECK ((cost_per_lb >= (0)::numeric)),
+    CONSTRAINT bullrhun_shipping_rates_max_weight_lbs_check CHECK ((max_weight_lbs >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_shipping_rates OWNER TO postgres;
+
+--
+-- TOC entry 386 (class 1259 OID 20691)
+-- Name: bullrhun_tokens; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_tokens (
+    mint text NOT NULL,
+    is_active boolean DEFAULT true,
+    is_graduated boolean DEFAULT false,
+    graduated_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.bullrhun_tokens OWNER TO postgres;
+
+--
+-- TOC entry 388 (class 1259 OID 20721)
+-- Name: bullrhun_trades; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_trades (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    mint text NOT NULL,
+    signature text NOT NULL,
+    venue text NOT NULL,
+    amount_sol numeric(38,9),
+    amount_tokens numeric(38,0),
+    price_per_token numeric(38,9),
+    trader_address text,
+    is_system_buy boolean DEFAULT false,
+    cycle_id uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_trades_amount_sol_check CHECK ((amount_sol >= (0)::numeric)),
+    CONSTRAINT bullrhun_trades_amount_tokens_check CHECK ((amount_tokens >= (0)::numeric)),
+    CONSTRAINT bullrhun_trades_price_per_token_check CHECK ((price_per_token >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_trades OWNER TO postgres;
+
+-- User activity audit table removed - using blockchain transaction tracking instead
+
+
+--
+-- TOC entry 407 (class 1259 OID 23835)
+-- Name: bullrhun_user_addresses; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_user_addresses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_wallet_address text NOT NULL,
+    type text NOT NULL,
+    is_default boolean DEFAULT false,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    company text,
+    address_line_1 text NOT NULL,
+    address_line_2 text,
+    city text NOT NULL,
+    state text,
+    zip_code text NOT NULL,
+    country text NOT NULL,
+    phone text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    notes text,
+    CONSTRAINT bullrhun_user_addresses_type_check CHECK ((type = ANY (ARRAY['billing'::text, 'shipping'::text])))
+);
+
+
+ALTER TABLE public.bullrhun_user_addresses OWNER TO postgres;
+
+--
+-- TOC entry 4359 (class 0 OID 0)
+-- Dependencies: 407
+-- Name: TABLE bullrhun_user_addresses; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.bullrhun_user_addresses IS 'Saved shipping and billing addresses for users';
+
+
+-- User sessions table removed - using Web3 wallet authentication only
+
+--
+-- TOC entry 409 (class 1259 OID 23873)
+-- Name: bullrhun_user_designs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_user_designs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_wallet_address text NOT NULL,
+    title text NOT NULL,
+    description text,
+    design_type public.product_type NOT NULL,
+    image_url text NOT NULL,
+    design_files text[],
+    status text DEFAULT 'pending'::text NOT NULL,
+    approved boolean DEFAULT false NOT NULL,
+    admin_notes text,
+    submission_data jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_user_designs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'under_review'::text, 'approved'::text, 'rejected'::text, 'archived'::text])))
+);
+
+
+ALTER TABLE public.bullrhun_user_designs OWNER TO postgres;
+
+--
+-- TOC entry 4361 (class 0 OID 0)
+-- Dependencies: 408
+-- Name: TABLE bullrhun_user_designs; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.bullrhun_user_designs IS 'User submitted design proposals for community voting and review';
+
+
+--
+-- TOC entry 403 (class 1259 OID 23686)
+-- Name: bullrhun_vendor_order_items; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_vendor_order_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    vendor_order_id uuid,
+    product_id uuid,
+    variant_id uuid,
+    quantity integer NOT NULL,
+    unit_cost numeric(38,2) NOT NULL,
+    total_cost numeric(38,2) NOT NULL,
+    quantity_received integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_vendor_order_items_quantity_check CHECK ((quantity > 0)),
+    CONSTRAINT bullrhun_vendor_order_items_quantity_received_check CHECK ((quantity_received >= 0)),
+    CONSTRAINT bullrhun_vendor_order_items_total_cost_check CHECK ((total_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_vendor_order_items_unit_cost_check CHECK ((unit_cost >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_vendor_order_items OWNER TO postgres;
+
+--
+-- TOC entry 402 (class 1259 OID 23665)
+-- Name: bullrhun_vendor_orders; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_vendor_orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    vendor_id uuid,
+    order_number text NOT NULL,
+    status public.vendor_order_status DEFAULT 'pending'::public.vendor_order_status,
+    total_cost numeric(38,2) NOT NULL,
+    shipping_cost numeric(38,2) DEFAULT 0,
+    vendor_order_id text,
+    vendor_tracking text,
+    expected_delivery timestamp with time zone,
+    actual_delivery timestamp with time zone,
+    notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT bullrhun_vendor_orders_shipping_cost_check CHECK ((shipping_cost >= (0)::numeric)),
+    CONSTRAINT bullrhun_vendor_orders_total_cost_check CHECK ((total_cost >= (0)::numeric))
+);
+
+
+ALTER TABLE public.bullrhun_vendor_orders OWNER TO postgres;
+
+--
+-- TOC entry 396 (class 1259 OID 23527)
+-- Name: bullrhun_vendors; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bullrhun_vendors (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    business_name text,
+    email text NOT NULL,
+    phone text,
+    contact_person text,
+    address text,
+    city text,
+    state text,
+    zip_code text,
+    country text NOT NULL,
+    website text,
+    payment_terms text DEFAULT 'NET30'::text,
+    shipping_lead_time integer DEFAULT 7,
+    return_policy text,
+    quality_rating numeric(3,2),
+    reliability_score numeric(3,2),
+    is_active boolean DEFAULT true,
+    notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    commission_rate numeric(5,2) DEFAULT 15.00,
+    description text,
+    logo_url text,
+    banner_url text,
+    social_links jsonb DEFAULT '{}'::jsonb,
+    payment_info jsonb DEFAULT '{}'::jsonb,
+    shipping_info jsonb DEFAULT '{}'::jsonb,
+    is_featured boolean DEFAULT false,
+    user_id uuid,
+    wallet_address text,
+    CONSTRAINT bullrhun_vendors_quality_rating_check CHECK (((quality_rating >= (0)::numeric) AND (quality_rating <= (5)::numeric))),
+    CONSTRAINT bullrhun_vendors_reliability_score_check CHECK (((reliability_score >= (0)::numeric) AND (reliability_score <= (5)::numeric)))
+);
+
+
+ALTER TABLE public.bullrhun_vendors OWNER TO postgres;
+
+--
+-- TOC entry 4365 (class 0 OID 0)
+-- Dependencies: 396
+-- Name: COLUMN bullrhun_vendors.commission_rate; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.bullrhun_vendors.commission_rate IS 'Commission rate percentage for vendor (e.g., 15.00 means 15%)';
+
+-- Add categories column to bullrhun_vendors table
+ALTER TABLE public.bullrhun_vendors 
+ADD COLUMN categories jsonb DEFAULT '[]'::jsonb;
+
+-- Optional: Add index for better query performance on categories
+CREATE INDEX idx_bullrhun_vendors_categories_gin 
+ON public.bullrhun_vendors USING gin (categories);
+
+-- Optional: Add constraint to ensure categories is always an array
+ALTER TABLE public.bullrhun_vendors 
+ADD CONSTRAINT bullrhun_vendors_categories_check 
+CHECK (jsonb_typeof(categories) = 'array');
+--
+-- TOC entry 3821 (class 2604 OID 20913)
+-- Name: bullrhun_broadcasts id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_broadcasts ALTER COLUMN id SET DEFAULT nextval('public.bullrhun_broadcasts_id_seq'::regclass);
+
+
+--
+-- TOC entry 3977 (class 2606 OID 20918)
+-- Name: bullrhun_broadcasts bullrhun_broadcasts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_broadcasts
+    ADD CONSTRAINT bullrhun_broadcasts_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3943 (class 2606 OID 20715)
+-- Name: bullrhun_cycles bullrhun_cycles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_cycles
+    ADD CONSTRAINT bullrhun_cycles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4034 (class 2606 OID 23721)
+-- Name: bullrhun_inventory_log bullrhun_inventory_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_inventory_log
+    ADD CONSTRAINT bullrhun_inventory_log_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3974 (class 2606 OID 20873)
+-- Name: bullrhun_leaders bullrhun_leaders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_leaders
+    ADD CONSTRAINT bullrhun_leaders_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3963 (class 2606 OID 20774)
+-- Name: bullrhun_liquidity_events bullrhun_liquidity_events_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_liquidity_events
+    ADD CONSTRAINT bullrhun_liquidity_events_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3970 (class 2606 OID 20809)
+-- Name: bullrhun_listeners bullrhun_listeners_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_listeners
+    ADD CONSTRAINT bullrhun_listeners_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3968 (class 2606 OID 20796)
+-- Name: bullrhun_metrics bullrhun_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_metrics
+    ADD CONSTRAINT bullrhun_metrics_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4019 (class 2606 OID 23630)
+-- Name: bullrhun_order_items bullrhun_order_items_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_order_items
+    ADD CONSTRAINT bullrhun_order_items_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4008 (class 2606 OID 23612)
+-- Name: bullrhun_orders bullrhun_orders_order_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_orders
+    ADD CONSTRAINT bullrhun_orders_order_number_key UNIQUE (order_number);
+
+
+--
+-- TOC entry 4010 (class 2606 OID 23610)
+-- Name: bullrhun_orders bullrhun_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_orders
+    ADD CONSTRAINT bullrhun_orders_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4012 (class 2606 OID 23614)
+-- Name: bullrhun_orders bullrhun_orders_solana_payment_address_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_orders
+    ADD CONSTRAINT bullrhun_orders_solana_payment_address_key UNIQUE (solana_payment_address);
+
+
+--
+-- TOC entry 4038 (class 2606 OID 23739)
+-- Name: bullrhun_product_reviews bullrhun_product_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_reviews
+    ADD CONSTRAINT bullrhun_product_reviews_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4000 (class 2606 OID 23585)
+-- Name: bullrhun_product_variants bullrhun_product_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_variants
+    ADD CONSTRAINT bullrhun_product_variants_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4002 (class 2606 OID 23587)
+-- Name: bullrhun_product_variants bullrhun_product_variants_sku_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_variants
+    ADD CONSTRAINT bullrhun_product_variants_sku_key UNIQUE (sku);
+
+
+--
+-- TOC entry 3991 (class 2606 OID 23558)
+-- Name: bullrhun_products bullrhun_products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_products
+    ADD CONSTRAINT bullrhun_products_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3993 (class 2606 OID 23560)
+-- Name: bullrhun_products bullrhun_products_sku_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_products
+    ADD CONSTRAINT bullrhun_products_sku_key UNIQUE (sku);
+
+
+--
+-- TOC entry 3957 (class 2606 OID 20755)
+-- Name: bullrhun_rewards bullrhun_rewards_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_rewards
+    ADD CONSTRAINT bullrhun_rewards_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3959 (class 2606 OID 20757)
+-- Name: bullrhun_rewards bullrhun_rewards_signature_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_rewards
+    ADD CONSTRAINT bullrhun_rewards_signature_key UNIQUE (signature);
+
+
+--
+-- TOC entry 4024 (class 2606 OID 23664)
+-- Name: bullrhun_shipping_rates bullrhun_shipping_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_shipping_rates
+    ADD CONSTRAINT bullrhun_shipping_rates_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3941 (class 2606 OID 20701)
+-- Name: bullrhun_tokens bullrhun_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_tokens
+    ADD CONSTRAINT bullrhun_tokens_pkey PRIMARY KEY (mint);
+
+
+--
+-- TOC entry 3949 (class 2606 OID 20733)
+-- Name: bullrhun_trades bullrhun_trades_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_trades
+    ADD CONSTRAINT bullrhun_trades_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3951 (class 2606 OID 20735)
+-- Name: bullrhun_trades bullrhun_trades_signature_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_trades
+    ADD CONSTRAINT bullrhun_trades_signature_key UNIQUE (signature);
+
+
+-- User activity constraints removed - table dropped
+
+
+--
+-- TOC entry 4055 (class 2606 OID 23846)
+-- Name: bullrhun_user_addresses bullrhun_user_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_user_addresses
+    ADD CONSTRAINT bullrhun_user_addresses_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4060 (class 2606 OID 23865)
+-- Name: bullrhun_user_sessions bullrhun_user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+-- User sessions primary key removed - table dropped
+
+
+--
+-- TOC entry 4105 (class 2606 OID 23923)
+-- Name: bullrhun_user_designs bullrhun_user_designs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_user_designs
+    ADD CONSTRAINT bullrhun_user_designs_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4062 (class 2606 OID 23867)
+-- Name: bullrhun_user_sessions bullrhun_user_sessions_session_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+-- User sessions unique constraint removed - table dropped
+
+
+--
+-- TOC entry 4042 (class 2606 OID 23832)
+-- Name: bullrhun_users bullrhun_users_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_users
+    ADD CONSTRAINT bullrhun_users_email_key UNIQUE (email);
+
+
+--
+-- TOC entry 4044 (class 2606 OID 23830)
+-- Name: bullrhun_users bullrhun_users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_users
+    ADD CONSTRAINT bullrhun_users_pkey PRIMARY KEY (wallet_address);
+
+
+--
+-- TOC entry 4046 (class 2606 OID 23834)
+-- Name: bullrhun_users bullrhun_users_username_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_users
+    ADD CONSTRAINT bullrhun_users_username_key UNIQUE (username);
+
+
+--
+-- TOC entry 4048 (class 2606 OID 29634)
+-- Name: bullrhun_users bullrhun_users_wallet_address_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_users
+    ADD CONSTRAINT bullrhun_users_wallet_address_key UNIQUE (wallet_address);
+
+
+--
+-- TOC entry 4032 (class 2606 OID 23697)
+-- Name: bullrhun_vendor_order_items bullrhun_vendor_order_items_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_order_items
+    ADD CONSTRAINT bullrhun_vendor_order_items_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4026 (class 2606 OID 23680)
+-- Name: bullrhun_vendor_orders bullrhun_vendor_orders_order_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_orders
+    ADD CONSTRAINT bullrhun_vendor_orders_order_number_key UNIQUE (order_number);
+
+
+--
+-- TOC entry 4028 (class 2606 OID 23678)
+-- Name: bullrhun_vendor_orders bullrhun_vendor_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_orders
+    ADD CONSTRAINT bullrhun_vendor_orders_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3982 (class 2606 OID 23543)
+-- Name: bullrhun_vendors bullrhun_vendors_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendors
+    ADD CONSTRAINT bullrhun_vendors_email_key UNIQUE (email);
+
+
+--
+-- TOC entry 3984 (class 2606 OID 23541)
+-- Name: bullrhun_vendors bullrhun_vendors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendors
+    ADD CONSTRAINT bullrhun_vendors_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3986 (class 2606 OID 29636)
+-- Name: bullrhun_vendors bullrhun_vendors_wallet_address_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendors
+    ADD CONSTRAINT bullrhun_vendors_wallet_address_key UNIQUE (wallet_address);
+
+
+--
+-- TOC entry 3978 (class 1259 OID 20926)
+-- Name: idx_broadcasts_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_broadcasts_at ON public.bullrhun_broadcasts USING btree (broadcast_at);
+
+
+--
+-- TOC entry 3979 (class 1259 OID 20925)
+-- Name: idx_broadcasts_cycle; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_broadcasts_cycle ON public.bullrhun_broadcasts USING btree (related_cycle_id);
+
+
+--
+-- TOC entry 3980 (class 1259 OID 20924)
+-- Name: idx_broadcasts_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_broadcasts_type ON public.bullrhun_broadcasts USING btree (message_type);
+
+
+--
+-- TOC entry 3944 (class 1259 OID 20816)
+-- Name: idx_bullrhun_cycles_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_cycles_created_at ON public.bullrhun_cycles USING btree (created_at DESC);
+
+
+--
+-- TOC entry 3945 (class 1259 OID 20815)
+-- Name: idx_bullrhun_cycles_mint; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_cycles_mint ON public.bullrhun_cycles USING btree (mint);
+
+
+--
+-- TOC entry 3946 (class 1259 OID 20817)
+-- Name: idx_bullrhun_cycles_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_cycles_status ON public.bullrhun_cycles USING btree (status);
+
+
+--
+-- TOC entry 4035 (class 1259 OID 23771)
+-- Name: idx_bullrhun_inventory_log_created; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_inventory_log_created ON public.bullrhun_inventory_log USING btree (created_at DESC);
+
+
+--
+-- TOC entry 4036 (class 1259 OID 23770)
+-- Name: idx_bullrhun_inventory_log_variant; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_inventory_log_variant ON public.bullrhun_inventory_log USING btree (variant_id);
+
+
+--
+-- TOC entry 3975 (class 1259 OID 20874)
+-- Name: idx_bullrhun_leaders_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_leaders_active ON public.bullrhun_leaders USING btree (is_active, updated_at DESC);
+
+
+--
+-- TOC entry 3964 (class 1259 OID 20826)
+-- Name: idx_bullrhun_liquidity_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_liquidity_created_at ON public.bullrhun_liquidity_events USING btree (created_at DESC);
+
+
+--
+-- TOC entry 3965 (class 1259 OID 20824)
+-- Name: idx_bullrhun_liquidity_cycle_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_liquidity_cycle_id ON public.bullrhun_liquidity_events USING btree (cycle_id);
+
+
+--
+-- TOC entry 3966 (class 1259 OID 20825)
+-- Name: idx_bullrhun_liquidity_mint; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_liquidity_mint ON public.bullrhun_liquidity_events USING btree (mint);
+
+
+--
+-- TOC entry 4020 (class 1259 OID 23765)
+-- Name: idx_bullrhun_order_items_order; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_order_items_order ON public.bullrhun_order_items USING btree (order_id);
+
+
+--
+-- TOC entry 4021 (class 1259 OID 23766)
+-- Name: idx_bullrhun_order_items_product; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_order_items_product ON public.bullrhun_order_items USING btree (product_id);
+
+
+--
+-- TOC entry 4022 (class 1259 OID 23767)
+-- Name: idx_bullrhun_order_items_vendor; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_order_items_vendor ON public.bullrhun_order_items USING btree (vendor_id);
+
+
+--
+-- TOC entry 4013 (class 1259 OID 23763)
+-- Name: idx_bullrhun_orders_created; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_orders_created ON public.bullrhun_orders USING btree (created_at DESC);
+
+
+--
+-- TOC entry 4014 (class 1259 OID 23761)
+-- Name: idx_bullrhun_orders_customer; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_orders_customer_wallet ON public.bullrhun_orders USING btree (customer_wallet_address);
+
+
+-- Duplicate index removed - idx_bullrhun_orders_customer_wallet already exists
+
+
+--
+-- TOC entry 3994 (class 1259 OID 23754)
+-- Name: idx_bullrhun_products_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_products_active ON public.bullrhun_products USING btree (is_active);
+
+
+--
+-- TOC entry 3995 (class 1259 OID 23755)
+-- Name: idx_bullrhun_products_featured; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_products_featured ON public.bullrhun_products USING btree (is_featured);
+
+
+--
+-- TOC entry 3996 (class 1259 OID 23756)
+-- Name: idx_bullrhun_products_sku; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_products_sku ON public.bullrhun_products USING btree (sku);
+
+
+--
+-- TOC entry 3997 (class 1259 OID 23753)
+-- Name: idx_bullrhun_products_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_products_type ON public.bullrhun_products USING btree (type);
+
+
+--
+-- TOC entry 3998 (class 1259 OID 23752)
+-- Name: idx_bullrhun_products_vendor; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_products_vendor ON public.bullrhun_products USING btree (vendor_id);
+
+
+--
+-- TOC entry 4039 (class 1259 OID 23773)
+-- Name: idx_bullrhun_reviews_approved; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_reviews_approved ON public.bullrhun_product_reviews USING btree (is_approved);
+
+
+--
+-- TOC entry 4040 (class 1259 OID 23772)
+-- Name: idx_bullrhun_reviews_product; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_reviews_product ON public.bullrhun_product_reviews USING btree (product_id);
+
+
+--
+-- TOC entry 3960 (class 1259 OID 20823)
+-- Name: idx_bullrhun_rewards_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_rewards_created_at ON public.bullrhun_rewards USING btree (created_at DESC);
+
+
+--
+-- TOC entry 3961 (class 1259 OID 20822)
+-- Name: idx_bullrhun_rewards_cycle_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_rewards_cycle_id ON public.bullrhun_rewards USING btree (cycle_id);
+
+
+-- Session indexes removed - tables dropped
+
+--
+-- TOC entry 4107 (class 1259 OID 23925)
+-- Name: idx_bullrhun_user_designs_approved; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_designs_approved ON public.bullrhun_user_designs USING btree (approved);
+
+--
+-- TOC entry 4108 (class 1259 OID 23926)
+-- Name: idx_bullrhun_user_designs_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_designs_created_at ON public.bullrhun_user_designs USING btree (created_at DESC);
+
+--
+-- TOC entry 4109 (class 1259 OID 23927)
+-- Name: idx_bullrhun_user_designs_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_designs_status ON public.bullrhun_user_designs USING btree (status);
+
+--
+-- TOC entry 4110 (class 1259 OID 23928)
+-- Name: idx_bullrhun_user_designs_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_designs_type ON public.bullrhun_user_designs USING btree (design_type);
+
+--
+-- TOC entry 4111 (class 1259 OID 23929)
+-- Name: idx_bullrhun_user_designs_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_designs_user ON public.bullrhun_user_designs USING btree (user_wallet_address);
+
+
+--
+-- TOC entry 3952 (class 1259 OID 20819)
+-- Name: idx_bullrhun_trades_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_trades_created_at ON public.bullrhun_trades USING btree (created_at DESC);
+
+
+--
+-- TOC entry 3953 (class 1259 OID 20821)
+-- Name: idx_bullrhun_trades_cycle_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_trades_cycle_id ON public.bullrhun_trades USING btree (cycle_id);
+
+
+--
+-- TOC entry 3954 (class 1259 OID 20818)
+-- Name: idx_bullrhun_trades_mint; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_trades_mint ON public.bullrhun_trades USING btree (mint);
+
+
+--
+-- TOC entry 3955 (class 1259 OID 20820)
+-- Name: idx_bullrhun_trades_trader; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_trades_trader ON public.bullrhun_trades USING btree (trader_address);
+
+
+-- User activity indexes removed - tables dropped
+
+
+--
+-- TOC entry 4056 (class 1259 OID 23894)
+-- Name: idx_bullrhun_user_addresses_default; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_addresses_default ON public.bullrhun_user_addresses USING btree (user_wallet_address, is_default);
+
+
+--
+-- TOC entry 4057 (class 1259 OID 23893)
+-- Name: idx_bullrhun_user_addresses_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_addresses_type ON public.bullrhun_user_addresses USING btree (type);
+
+
+--
+-- TOC entry 4058 (class 1259 OID 23892)
+-- Name: idx_bullrhun_user_addresses_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_user_addresses_user ON public.bullrhun_user_addresses USING btree (user_wallet_address);
+
+
+--
+-- TOC entry 4049 (class 1259 OID 23890)
+-- Name: idx_bullrhun_users_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_users_active ON public.bullrhun_users USING btree (is_active);
+
+
+--
+-- TOC entry 4050 (class 1259 OID 23891)
+-- Name: idx_bullrhun_users_auth_provider; Type: INDEX; Schema: public; Owner: postgres
+--
+
+-- Auth provider index removed - using Web3 wallet authentication only
+
+
+--
+-- TOC entry 4051 (class 1259 OID 23887)
+-- Name: idx_bullrhun_users_email; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_users_email ON public.bullrhun_users USING btree (email);
+
+
+--
+-- TOC entry 4052 (class 1259 OID 23889)
+-- Name: idx_bullrhun_users_role; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_users_role ON public.bullrhun_users USING btree (role);
+
+
+--
+-- TOC entry 4053 (class 1259 OID 23888)
+-- Name: idx_bullrhun_users_username; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_users_username ON public.bullrhun_users USING btree (username);
+
+
+--
+-- TOC entry 4003 (class 1259 OID 23759)
+-- Name: idx_bullrhun_variants_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_variants_active ON public.bullrhun_product_variants USING btree (is_active);
+
+
+--
+-- TOC entry 4004 (class 1259 OID 23757)
+-- Name: idx_bullrhun_variants_product; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_variants_product ON public.bullrhun_product_variants USING btree (product_id);
+
+
+--
+-- TOC entry 4005 (class 1259 OID 23758)
+-- Name: idx_bullrhun_variants_sku; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_variants_sku ON public.bullrhun_product_variants USING btree (sku);
+
+
+--
+-- TOC entry 4006 (class 1259 OID 23760)
+-- Name: idx_bullrhun_variants_stock; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_variants_stock ON public.bullrhun_product_variants USING btree (stock_quantity);
+
+
+--
+-- TOC entry 4029 (class 1259 OID 23769)
+-- Name: idx_bullrhun_vendor_orders_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_vendor_orders_status ON public.bullrhun_vendor_orders USING btree (status);
+
+
+--
+-- TOC entry 4030 (class 1259 OID 23768)
+-- Name: idx_bullrhun_vendor_orders_vendor; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_vendor_orders_vendor ON public.bullrhun_vendor_orders USING btree (vendor_id);
+
+
+--
+-- TOC entry 3987 (class 1259 OID 23751)
+-- Name: idx_bullrhun_vendors_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_vendors_active ON public.bullrhun_vendors USING btree (is_active);
+
+
+--
+-- TOC entry 3988 (class 1259 OID 23750)
+-- Name: idx_bullrhun_vendors_email; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_bullrhun_vendors_email ON public.bullrhun_vendors USING btree (email);
+
+
+--
+-- TOC entry 3947 (class 1259 OID 20929)
+-- Name: idx_cycles_step_number; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_cycles_step_number ON public.bullrhun_cycles USING btree (step_number);
+
+
+--
+-- TOC entry 3971 (class 1259 OID 20928)
+-- Name: idx_listeners_last_winner; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_listeners_last_winner ON public.bullrhun_listeners USING btree (last_winner_address);
+
+
+--
+-- TOC entry 3972 (class 1259 OID 20927)
+-- Name: idx_listeners_trade_goal; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_listeners_trade_goal ON public.bullrhun_listeners USING btree (trade_goal);
+
+
+--
+-- TOC entry 3989 (class 1259 OID 29614)
+-- Name: idx_vendors_commission_rate; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_vendors_commission_rate ON public.bullrhun_vendors USING btree (commission_rate);
+
+
+--
+-- TOC entry 4099 (class 2620 OID 23923)
+-- Name: bullrhun_orders trigger_log_order_user_action; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+-- Order activity trigger removed - using blockchain transaction tracking
+
+
+--
+-- TOC entry 4101 (class 2620 OID 23790)
+-- Name: bullrhun_order_items trigger_update_inventory_on_sale; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trigger_update_inventory_on_sale AFTER INSERT ON public.bullrhun_order_items FOR EACH ROW EXECUTE FUNCTION public.update_inventory_on_sale();
+
+
+--
+-- TOC entry 4100 (class 2620 OID 23796)
+-- Name: bullrhun_orders update_orders_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON public.bullrhun_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4098 (class 2620 OID 23795)
+-- Name: bullrhun_products update_products_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON public.bullrhun_products FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4104 (class 2620 OID 23909)
+-- Name: bullrhun_user_addresses update_user_addresses_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_user_addresses_updated_at BEFORE UPDATE ON public.bullrhun_user_addresses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4103 (class 2620 OID 23908)
+-- Name: bullrhun_users update_users_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.bullrhun_users FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4102 (class 2620 OID 23797)
+-- Name: bullrhun_vendor_orders update_vendor_orders_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_vendor_orders_updated_at BEFORE UPDATE ON public.bullrhun_vendor_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4097 (class 2620 OID 23794)
+-- Name: bullrhun_vendors update_vendors_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON public.bullrhun_vendors FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- TOC entry 4078 (class 2606 OID 20919)
+-- Name: bullrhun_broadcasts bullrhun_broadcasts_related_cycle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_broadcasts
+    ADD CONSTRAINT bullrhun_broadcasts_related_cycle_id_fkey FOREIGN KEY (related_cycle_id) REFERENCES public.bullrhun_cycles(id);
+
+
+--
+-- TOC entry 4071 (class 2606 OID 20716)
+-- Name: bullrhun_cycles bullrhun_cycles_mint_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_cycles
+    ADD CONSTRAINT bullrhun_cycles_mint_fkey FOREIGN KEY (mint) REFERENCES public.bullrhun_tokens(mint);
+
+
+--
+-- TOC entry 4091 (class 2606 OID 23722)
+-- Name: bullrhun_inventory_log bullrhun_inventory_log_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_inventory_log
+    ADD CONSTRAINT bullrhun_inventory_log_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.bullrhun_product_variants(id);
+
+
+--
+-- TOC entry 4075 (class 2606 OID 20775)
+-- Name: bullrhun_liquidity_events bullrhun_liquidity_events_cycle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_liquidity_events
+    ADD CONSTRAINT bullrhun_liquidity_events_cycle_id_fkey FOREIGN KEY (cycle_id) REFERENCES public.bullrhun_cycles(id);
+
+
+--
+-- TOC entry 4076 (class 2606 OID 20780)
+-- Name: bullrhun_liquidity_events bullrhun_liquidity_events_mint_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_liquidity_events
+    ADD CONSTRAINT bullrhun_liquidity_events_mint_fkey FOREIGN KEY (mint) REFERENCES public.bullrhun_tokens(mint);
+
+
+--
+-- TOC entry 4077 (class 2606 OID 20810)
+-- Name: bullrhun_listeners bullrhun_listeners_monitored_mint_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_listeners
+    ADD CONSTRAINT bullrhun_listeners_monitored_mint_fkey FOREIGN KEY (monitored_mint) REFERENCES public.bullrhun_tokens(mint);
+
+
+--
+-- TOC entry 4083 (class 2606 OID 23631)
+-- Name: bullrhun_order_items bullrhun_order_items_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_order_items
+    ADD CONSTRAINT bullrhun_order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.bullrhun_orders(id);
+
+
+--
+-- TOC entry 4084 (class 2606 OID 23636)
+-- Name: bullrhun_order_items bullrhun_order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_order_items
+    ADD CONSTRAINT bullrhun_order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.bullrhun_products(id);
+
+
+--
+-- TOC entry 4085 (class 2606 OID 23641)
+-- Name: bullrhun_order_items bullrhun_order_items_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_order_items
+    ADD CONSTRAINT bullrhun_order_items_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.bullrhun_product_variants(id);
+
+
+--
+-- TOC entry 4086 (class 2606 OID 23646)
+-- Name: bullrhun_order_items bullrhun_order_items_vendor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_order_items
+    ADD CONSTRAINT bullrhun_order_items_vendor_id_fkey FOREIGN KEY (vendor_id) REFERENCES public.bullrhun_vendors(id);
+
+
+--
+-- TOC entry 4082 (class 2606 OID 23852)
+-- Name: bullrhun_orders bullrhun_orders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_orders
+    ADD CONSTRAINT bullrhun_orders_customer_wallet_address_fkey FOREIGN KEY (customer_wallet_address) REFERENCES public.bullrhun_users(wallet_address);
+
+
+--
+-- TOC entry 4092 (class 2606 OID 23745)
+-- Name: bullrhun_product_reviews bullrhun_product_reviews_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_reviews
+    ADD CONSTRAINT bullrhun_product_reviews_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.bullrhun_orders(id);
+
+
+--
+-- TOC entry 4093 (class 2606 OID 23740)
+-- Name: bullrhun_product_reviews bullrhun_product_reviews_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_reviews
+    ADD CONSTRAINT bullrhun_product_reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.bullrhun_products(id);
+
+
+--
+-- TOC entry 4081 (class 2606 OID 23588)
+-- Name: bullrhun_product_variants bullrhun_product_variants_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_product_variants
+    ADD CONSTRAINT bullrhun_product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.bullrhun_products(id);
+
+
+--
+-- TOC entry 4080 (class 2606 OID 23561)
+-- Name: bullrhun_products bullrhun_products_vendor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_products
+    ADD CONSTRAINT bullrhun_products_vendor_id_fkey FOREIGN KEY (vendor_id) REFERENCES public.bullrhun_vendors(id);
+
+
+--
+-- TOC entry 4074 (class 2606 OID 20758)
+-- Name: bullrhun_rewards bullrhun_rewards_cycle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_rewards
+    ADD CONSTRAINT bullrhun_rewards_cycle_id_fkey FOREIGN KEY (cycle_id) REFERENCES public.bullrhun_cycles(id);
+
+
+--
+-- TOC entry 4072 (class 2606 OID 20741)
+-- Name: bullrhun_trades bullrhun_trades_cycle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_trades
+    ADD CONSTRAINT bullrhun_trades_cycle_id_fkey FOREIGN KEY (cycle_id) REFERENCES public.bullrhun_cycles(id);
+
+
+--
+-- TOC entry 4073 (class 2606 OID 20736)
+-- Name: bullrhun_trades bullrhun_trades_mint_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_trades
+    ADD CONSTRAINT bullrhun_trades_mint_fkey FOREIGN KEY (mint) REFERENCES public.bullrhun_tokens(mint);
+
+
+-- User activity foreign key removed - table dropped
+
+
+--
+-- TOC entry 4094 (class 2606 OID 23847)
+-- Name: bullrhun_user_addresses bullrhun_user_addresses_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_user_addresses
+    ADD CONSTRAINT bullrhun_user_addresses_user_wallet_address_fkey FOREIGN KEY (user_wallet_address) REFERENCES public.bullrhun_users(wallet_address) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4095 (class 2606 OID 23868)
+-- Name: bullrhun_user_sessions bullrhun_user_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+-- User sessions foreign key removed - table dropped
+
+
+--
+-- TOC entry 4106 (class 2606 OID 23924)
+-- Name: bullrhun_user_designs bullrhun_user_designs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_user_designs
+    ADD CONSTRAINT bullrhun_user_designs_user_wallet_address_fkey FOREIGN KEY (user_wallet_address) REFERENCES public.bullrhun_users(wallet_address) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4088 (class 2606 OID 23703)
+-- Name: bullrhun_vendor_order_items bullrhun_vendor_order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_order_items
+    ADD CONSTRAINT bullrhun_vendor_order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.bullrhun_products(id);
+
+
+--
+-- TOC entry 4089 (class 2606 OID 23708)
+-- Name: bullrhun_vendor_order_items bullrhun_vendor_order_items_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_order_items
+    ADD CONSTRAINT bullrhun_vendor_order_items_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.bullrhun_product_variants(id);
+
+
+--
+-- TOC entry 4090 (class 2606 OID 23698)
+-- Name: bullrhun_vendor_order_items bullrhun_vendor_order_items_vendor_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_order_items
+    ADD CONSTRAINT bullrhun_vendor_order_items_vendor_order_id_fkey FOREIGN KEY (vendor_order_id) REFERENCES public.bullrhun_vendor_orders(id);
+
+
+--
+-- TOC entry 4087 (class 2606 OID 23681)
+-- Name: bullrhun_vendor_orders bullrhun_vendor_orders_vendor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendor_orders
+    ADD CONSTRAINT bullrhun_vendor_orders_vendor_id_fkey FOREIGN KEY (vendor_id) REFERENCES public.bullrhun_vendors(id);
+
+
+--
+-- TOC entry 4079 (class 2606 OID 29620)
+-- Name: bullrhun_vendors bullrhun_vendors_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bullrhun_vendors
+    ADD CONSTRAINT bullrhun_vendors_wallet_address_fkey FOREIGN KEY (wallet_address) REFERENCES public.bullrhun_users(wallet_address);
+
+
+--
+-- TOC entry 4278 (class 3256 OID 20877)
+-- Name: bullrhun_leaders Leaders can insert all; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Leaders can insert all" ON public.bullrhun_leaders FOR INSERT WITH CHECK (true);
+
+
+--
+-- TOC entry 4277 (class 3256 OID 20876)
+-- Name: bullrhun_leaders Leaders can update all; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Leaders can update all" ON public.bullrhun_leaders FOR UPDATE USING (true);
+
+
+--
+-- TOC entry 4276 (class 3256 OID 20875)
+-- Name: bullrhun_leaders Leaders can view all; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Leaders can view all" ON public.bullrhun_leaders FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4302 (class 3256 OID 20828)
+-- Name: bullrhun_cycles Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_cycles FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4305 (class 3256 OID 20831)
+-- Name: bullrhun_liquidity_events Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_liquidity_events FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4307 (class 3256 OID 20833)
+-- Name: bullrhun_listeners Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_listeners FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4306 (class 3256 OID 20832)
+-- Name: bullrhun_metrics Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_metrics FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4280 (class 3256 OID 23776)
+-- Name: bullrhun_product_reviews Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_product_reviews FOR SELECT USING ((is_approved = true));
+
+
+--
+-- TOC entry 4279 (class 3256 OID 23775)
+-- Name: bullrhun_product_variants Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_product_variants FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4304 (class 3256 OID 20830)
+-- Name: bullrhun_rewards Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_rewards FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4281 (class 3256 OID 23777)
+-- Name: bullrhun_shipping_rates Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_shipping_rates FOR SELECT USING ((is_active = true));
+
+
+--
+-- TOC entry 4301 (class 3256 OID 20827)
+-- Name: bullrhun_tokens Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_tokens FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4303 (class 3256 OID 20829)
+-- Name: bullrhun_trades Public read access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access" ON public.bullrhun_trades FOR SELECT USING (true);
+
+
+--
+-- TOC entry 4290 (class 3256 OID 23902)
+-- Name: bullrhun_users Public read access by email; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access by email" ON public.bullrhun_users FOR SELECT USING (((email = (auth.jwt() ->> 'email'::text)) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- TOC entry 4309 (class 3256 OID 20835)
+-- Name: bullrhun_cycles Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_cycles USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4288 (class 3256 OID 23787)
+-- Name: bullrhun_inventory_log Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_inventory_log USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4312 (class 3256 OID 20838)
+-- Name: bullrhun_liquidity_events Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_liquidity_events USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4314 (class 3256 OID 20840)
+-- Name: bullrhun_listeners Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_listeners USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4313 (class 3256 OID 20839)
+-- Name: bullrhun_metrics Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_metrics USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4284 (class 3256 OID 23783)
+-- Name: bullrhun_order_items Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_order_items USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4283 (class 3256 OID 23782)
+-- Name: bullrhun_orders Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_orders USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4289 (class 3256 OID 23788)
+-- Name: bullrhun_product_reviews Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_product_reviews USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4282 (class 3256 OID 23781)
+-- Name: bullrhun_product_variants Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_product_variants USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4300 (class 3256 OID 31918)
+-- Name: bullrhun_products Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_products USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4311 (class 3256 OID 20837)
+-- Name: bullrhun_rewards Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_rewards USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4285 (class 3256 OID 23784)
+-- Name: bullrhun_shipping_rates Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_shipping_rates USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4308 (class 3256 OID 20834)
+-- Name: bullrhun_tokens Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_tokens USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4310 (class 3256 OID 20836)
+-- Name: bullrhun_trades Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_trades USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4287 (class 3256 OID 23786)
+-- Name: bullrhun_vendor_order_items Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_vendor_order_items USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4286 (class 3256 OID 23785)
+-- Name: bullrhun_vendor_orders Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_vendor_orders USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4295 (class 3256 OID 23907)
+-- Name: bullrhun_user_activity Service role full access to activity log; Type: POLICY; Schema: public; Owner: postgres
+--
+
+-- User activity policy removed - table dropped
+
+
+--
+-- TOC entry 4298 (class 3256 OID 23915)
+-- Name: bullrhun_orders Service role full access to orders; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access to orders" ON public.bullrhun_orders USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4294 (class 3256 OID 23906)
+-- Name: bullrhun_user_sessions Service role full access to sessions; Type: POLICY; Schema: public; Owner: postgres
+--
+
+-- User sessions policy removed - table dropped
+
+
+--
+-- TOC entry 4292 (class 3256 OID 23904)
+-- Name: bullrhun_users Service role full access to users; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access to users" ON public.bullrhun_users USING ((auth.role() = 'service_role'::text));
+
+
+--
+-- TOC entry 4293 (class 3256 OID 23905)
+-- Name: bullrhun_user_addresses Users can manage own addresses; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users can manage own addresses" ON public.bullrhun_user_addresses USING (((user_wallet_address = public.get_wallet_from_auth()) OR (auth.role() = 'service_role'::text)));
+
+--
+-- TOC entry 4315 (class 3256 OID 23916)
+-- Name: bullrhun_user_designs Public read access to approved designs; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Public read access to approved designs" ON public.bullrhun_user_designs FOR SELECT USING ((approved = true));
+
+--
+-- TOC entry 4316 (class 3256 OID 23917)
+-- Name: bullrhun_user_designs Service role full access; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Service role full access" ON public.bullrhun_user_designs USING ((auth.role() = 'service_role'::text));
+
+--
+-- TOC entry 4317 (class 3256 OID 23918)
+-- Name: bullrhun_user_designs Users can manage own designs; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users can manage own designs" ON public.bullrhun_user_designs USING (((user_wallet_address = public.get_wallet_from_auth()) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- TOC entry 4291 (class 3256 OID 23903)
+-- Name: bullrhun_users Users can update own profile; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users can update own profile" ON public.bullrhun_users FOR UPDATE USING ((wallet_address = public.get_wallet_from_auth()) OR (auth.role() = 'service_role'::text));
+
+--
+-- TOC entry 4298 (class 3256 OID 23919)
+-- Name: bullrhun_users Public read access by wallet; Type: POLICY; Schema: public; Owner: postgres
+--
+
+
+--
+-- TOC entry 4297 (class 3256 OID 23914)
+-- Name: bullrhun_orders Users read own orders; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users read own orders" ON public.bullrhun_orders FOR SELECT USING ((customer_wallet_address = public.get_wallet_from_auth()));
+
+
+--
+-- TOC entry 4255 (class 0 OID 20702)
+-- Dependencies: 387
+-- Name: bullrhun_cycles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_cycles ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4270 (class 0 OID 23713)
+-- Dependencies: 404
+-- Name: bullrhun_inventory_log; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_inventory_log ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4261 (class 0 OID 20861)
+-- Dependencies: 393
+-- Name: bullrhun_leaders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_leaders ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4258 (class 0 OID 20763)
+-- Dependencies: 390
+-- Name: bullrhun_liquidity_events; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_liquidity_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4260 (class 0 OID 20797)
+-- Dependencies: 392
+-- Name: bullrhun_listeners; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_listeners ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4259 (class 0 OID 20785)
+-- Dependencies: 391
+-- Name: bullrhun_metrics; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_metrics ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4266 (class 0 OID 23615)
+-- Dependencies: 400
+-- Name: bullrhun_order_items; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_order_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4265 (class 0 OID 23593)
+-- Dependencies: 399
+-- Name: bullrhun_orders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4271 (class 0 OID 23727)
+-- Dependencies: 405
+-- Name: bullrhun_product_reviews; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_product_reviews ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4264 (class 0 OID 23566)
+-- Dependencies: 398
+-- Name: bullrhun_product_variants; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_product_variants ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4263 (class 0 OID 23544)
+-- Dependencies: 397
+-- Name: bullrhun_products; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_products ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4257 (class 0 OID 20746)
+-- Dependencies: 389
+-- Name: bullrhun_rewards; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_rewards ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4267 (class 0 OID 23651)
+-- Dependencies: 401
+-- Name: bullrhun_shipping_rates; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_shipping_rates ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4254 (class 0 OID 20691)
+-- Dependencies: 386
+-- Name: bullrhun_tokens; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_tokens ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4256 (class 0 OID 20721)
+-- Dependencies: 388
+-- Name: bullrhun_trades; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_trades ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4275 (class 0 OID 23873)
+-- Dependencies: 409
+-- Name: bullrhun_user_activity; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+-- User activity RLS removed - table dropped
+
+--
+-- TOC entry 4273 (class 0 OID 23835)
+-- Dependencies: 407
+-- Name: bullrhun_user_addresses; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_user_addresses ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4274 (class 0 OID 23857)
+-- Dependencies: 408
+-- Name: bullrhun_user_sessions; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+-- User sessions RLS removed - table dropped
+
+--
+-- TOC entry 4272 (class 0 OID 23729)
+-- Name: bullrhun_user_designs; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_user_designs ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4272 (class 0 OID 23809)
+-- Dependencies: 406
+-- Name: bullrhun_users; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_users ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4269 (class 0 OID 23686)
+-- Dependencies: 403
+-- Name: bullrhun_vendor_order_items; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_vendor_order_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4268 (class 0 OID 23665)
+-- Dependencies: 402
+-- Name: bullrhun_vendor_orders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_vendor_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4262 (class 0 OID 23527)
+-- Dependencies: 396
+-- Name: bullrhun_vendors; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bullrhun_vendors ENABLE ROW LEVEL SECURITY;
+
+--
+-- TOC entry 4299 (class 3256 OID 29660)
+-- Name: bullrhun_products products; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY products ON public.bullrhun_products USING (true) WITH CHECK (true);
+
+
+--
+-- TOC entry 4296 (class 3256 OID 29627)
+-- Name: bullrhun_vendors vendors; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY vendors ON public.bullrhun_vendors USING (true) WITH CHECK (true);
+
+
+--
+-- TOC entry 4324 (class 0 OID 0)
+-- Dependencies: 128
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
+--
+
+GRANT USAGE ON SCHEMA public TO postgres;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
+
+
+--
+-- TOC entry 4325 (class 0 OID 0)
+-- Dependencies: 502
+-- Name: FUNCTION cleanup_expired_sessions(); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- Session cleanup function grants removed - function dropped
+
+
+--
+-- TOC entry 4326 (class 0 OID 0)
+-- Dependencies: 541
+-- Name: FUNCTION generate_order_number(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.generate_order_number() TO anon;
+GRANT ALL ON FUNCTION public.generate_order_number() TO authenticated;
+GRANT ALL ON FUNCTION public.generate_order_number() TO service_role;
+
+
+--
+-- TOC entry 4327 (class 0 OID 0)
+-- Dependencies: 498
+-- Name: FUNCTION generate_vendor_order_number(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.generate_vendor_order_number() TO anon;
+GRANT ALL ON FUNCTION public.generate_vendor_order_number() TO authenticated;
+GRANT ALL ON FUNCTION public.generate_vendor_order_number() TO service_role;
+
+
+--
+-- TOC entry 4328 (class 0 OID 0)
+-- Dependencies: 512
+-- Name: FUNCTION get_or_create_user(p_email text, p_first_name text, p_last_name text, p_auth_provider text, p_auth_provider_id text, p_role public.user_role); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- get_or_create_user function grants removed - function dropped
+
+
+--
+-- TOC entry 4329 (class 0 OID 0)
+-- Dependencies: 499
+-- Name: FUNCTION get_user_orders(p_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- get_user_orders function grants removed - function dropped
+
+
+--
+-- TOC entry 4330 (class 0 OID 0)
+-- Dependencies: 424
+-- Name: FUNCTION is_admin(user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- is_admin function grants removed - function dropped
+
+
+--
+-- TOC entry 4331 (class 0 OID 0)
+-- Dependencies: 543
+-- Name: FUNCTION log_order_user_action(); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- log_order_user_action function grants removed - function dropped
+
+
+--
+-- TOC entry 4332 (class 0 OID 0)
+-- Dependencies: 437
+-- Name: FUNCTION update_inventory_on_sale(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.update_inventory_on_sale() TO anon;
+GRANT ALL ON FUNCTION public.update_inventory_on_sale() TO authenticated;
+GRANT ALL ON FUNCTION public.update_inventory_on_sale() TO service_role;
+
+
+--
+-- TOC entry 4333 (class 0 OID 0)
+-- Dependencies: 423
+-- Name: FUNCTION update_updated_at_column(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO anon;
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO authenticated;
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO service_role;
+
+
+--
+-- TOC entry 4334 (class 0 OID 0)
+-- Dependencies: 474
+-- Name: FUNCTION update_user_login(user_id_param uuid, ip_address_param inet, user_agent_param text); Type: ACL; Schema: public; Owner: postgres
+--
+
+-- update_user_login function grants removed - function dropped
+
+
+--
+-- TOC entry 4336 (class 0 OID 0)
+-- Dependencies: 399
+-- Name: TABLE bullrhun_orders; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_orders TO anon;
+GRANT ALL ON TABLE public.bullrhun_orders TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_orders TO service_role;
+
+
+--
+-- TOC entry 4338 (class 0 OID 0)
+-- Dependencies: 406
+-- Name: TABLE bullrhun_users; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_users TO anon;
+GRANT ALL ON TABLE public.bullrhun_users TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_users TO service_role;
+
+
+--
+-- TOC entry 4339 (class 0 OID 0)
+-- Dependencies: 410
+-- Name: TABLE admin_order_summary; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.admin_order_summary TO anon;
+GRANT ALL ON TABLE public.admin_order_summary TO authenticated;
+GRANT ALL ON TABLE public.admin_order_summary TO service_role;
+
+
+--
+-- TOC entry 4340 (class 0 OID 0)Error: Failed to run sql query: ERROR: 42P06: schema "public" already exists
+-- Dependencies: 395
+-- Name: TABLE bullrhun_broadcasts; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_broadcasts TO anon;
+GRANT ALL ON TABLE public.bullrhun_broadcasts TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_broadcasts TO service_role;
+
+
+--
+-- TOC entry 4342 (class 0 OID 0)
+-- Dependencies: 394
+-- Name: SEQUENCE bullrhun_broadcasts_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.bullrhun_broadcasts_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.bullrhun_broadcasts_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.bullrhun_broadcasts_id_seq TO service_role;
+
+
+--
+-- TOC entry 4343 (class 0 OID 0)
+-- Dependencies: 387
+-- Name: TABLE bullrhun_cycles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_cycles TO anon;
+GRANT ALL ON TABLE public.bullrhun_cycles TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_cycles TO service_role;
+
+
+--
+-- TOC entry 4344 (class 0 OID 0)
+-- Dependencies: 404
+-- Name: TABLE bullrhun_inventory_log; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_inventory_log TO anon;
+GRANT ALL ON TABLE public.bullrhun_inventory_log TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_inventory_log TO service_role;
+
+
+--
+-- TOC entry 4345 (class 0 OID 0)
+-- Dependencies: 393
+-- Name: TABLE bullrhun_leaders; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_leaders TO anon;
+GRANT ALL ON TABLE public.bullrhun_leaders TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_leaders TO service_role;
+
+
+--
+-- TOC entry 4346 (class 0 OID 0)
+-- Dependencies: 390
+-- Name: TABLE bullrhun_liquidity_events; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_liquidity_events TO anon;
+GRANT ALL ON TABLE public.bullrhun_liquidity_events TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_liquidity_events TO service_role;
+
+
+--
+-- TOC entry 4347 (class 0 OID 0)
+-- Dependencies: 392
+-- Name: TABLE bullrhun_listeners; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_listeners TO anon;
+GRANT ALL ON TABLE public.bullrhun_listeners TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_listeners TO service_role;
+
+
+--
+-- TOC entry 4348 (class 0 OID 0)
+-- Dependencies: 391
+-- Name: TABLE bullrhun_metrics; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_metrics TO anon;
+GRANT ALL ON TABLE public.bullrhun_metrics TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_metrics TO service_role;
+
+
+--
+-- TOC entry 4349 (class 0 OID 0)
+-- Dependencies: 400
+-- Name: TABLE bullrhun_order_items; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_order_items TO anon;
+GRANT ALL ON TABLE public.bullrhun_order_items TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_order_items TO service_role;
+
+
+--
+-- TOC entry 4350 (class 0 OID 0)
+-- Dependencies: 405
+-- Name: TABLE bullrhun_product_reviews; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_product_reviews TO anon;
+GRANT ALL ON TABLE public.bullrhun_product_reviews TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_product_reviews TO service_role;
+
+
+--
+-- TOC entry 4351 (class 0 OID 0)
+-- Dependencies: 398
+-- Name: TABLE bullrhun_product_variants; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_product_variants TO anon;
+GRANT ALL ON TABLE public.bullrhun_product_variants TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_product_variants TO service_role;
+
+
+--
+-- TOC entry 4352 (class 0 OID 0)
+-- Dependencies: 397
+-- Name: TABLE bullrhun_products; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_products TO anon;
+GRANT ALL ON TABLE public.bullrhun_products TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_products TO service_role;
+
+
+--
+-- TOC entry 4353 (class 0 OID 0)
+-- Dependencies: 389
+-- Name: TABLE bullrhun_rewards; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_rewards TO anon;
+GRANT ALL ON TABLE public.bullrhun_rewards TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_rewards TO service_role;
+
+
+--
+-- TOC entry 4354 (class 0 OID 0)
+-- Dependencies: 401
+-- Name: TABLE bullrhun_shipping_rates; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_shipping_rates TO anon;
+GRANT ALL ON TABLE public.bullrhun_shipping_rates TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_shipping_rates TO service_role;
+
+
+--
+-- TOC entry 4355 (class 0 OID 0)
+-- Dependencies: 386
+-- Name: TABLE bullrhun_tokens; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_tokens TO anon;
+GRANT ALL ON TABLE public.bullrhun_tokens TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_tokens TO service_role;
+
+
+--
+-- TOC entry 4356 (class 0 OID 0)
+-- Dependencies: 388
+-- Name: TABLE bullrhun_trades; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_trades TO anon;
+GRANT ALL ON TABLE public.bullrhun_trades TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_trades TO service_role;
+
+
+--
+-- TOC entry 4358 (class 0 OID 0)
+-- Dependencies: 409
+-- Name: TABLE bullrhun_user_activity; Type: ACL; Schema: public; Owner: postgres
+--
+
+-- User activity grants removed - table dropped
+
+
+--
+-- TOC entry 4360 (class 0 OID 0)
+-- Dependencies: 407
+-- Name: TABLE bullrhun_user_addresses; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_user_addresses TO anon;
+GRANT ALL ON TABLE public.bullrhun_user_addresses TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_user_addresses TO service_role;
+
+
+--
+-- TOC entry 4362 (class 0 OID 0)
+-- Dependencies: 408
+-- Name: TABLE bullrhun_user_sessions; Type: ACL; Schema: public; Owner: postgres
+--
+
+-- User sessions grants removed - table dropped
+
+--
+-- TOC entry 4367 (class 0 OID 0)
+-- Dependencies: 409
+-- Name: TABLE bullrhun_user_designs; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_user_designs TO anon;
+GRANT ALL ON TABLE public.bullrhun_user_designs TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_user_designs TO service_role;
+
+
+--
+-- TOC entry 4363 (class 0 OID 0)
+-- Dependencies: 403
+-- Name: TABLE bullrhun_vendor_order_items; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_vendor_order_items TO anon;
+GRANT ALL ON TABLE public.bullrhun_vendor_order_items TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_vendor_order_items TO service_role;
+
+
+--
+-- TOC entry 4364 (class 0 OID 0)
+-- Dependencies: 402
+-- Name: TABLE bullrhun_vendor_orders; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_vendor_orders TO anon;
+GRANT ALL ON TABLE public.bullrhun_vendor_orders TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_vendor_orders TO service_role;
+
+
+--
+-- TOC entry 4366 (class 0 OID 0)
+-- Dependencies: 396
+-- Name: TABLE bullrhun_vendors; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bullrhun_vendors TO anon;
+GRANT ALL ON TABLE public.bullrhun_vendors TO authenticated;
+GRANT ALL ON TABLE public.bullrhun_vendors TO service_role;
+
+
+--
+-- TOC entry 2584 (class 826 OID 16490)
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+-- Default privileges for postgres role removed - permission issues
+
+
+--
+-- TOC entry 2585 (class 826 OID 16491)
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+-- Default privileges for supabase_admin role sequences removed - permission issues
+
+
+--
+-- TOC entry 2583 (class 826 OID 16489)
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+-- Default privileges for postgres role functions removed - permission issues
+
+
+--
+-- TOC entry 2587 (class 826 OID 16493)
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+-- Default privileges for supabase_admin role functions removed - permission issues
+
+
+--
+-- TOC entry 2582 (class 826 OID 16488)
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+-- Default privileges for postgres role tables removed - permission issues
+
+
+--
+-- TOC entry 2586 (class 826 OID 16492)
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+-- Default privileges for supabase_admin role tables removed - permission issues
+
+
+-- Completed on 2026-01-02 21:30:01 EST
+
+--
+-- PostgreSQL database dump complete
+--
+
+-- Run this in Supabase SQL Editor
+BEGIN;
+
+-- Add inventory_quantity column to bullrhun_products
+ALTER TABLE public.bullrhun_products 
+ADD COLUMN inventory_quantity integer DEFAULT 0;
+
+-- Add check constraint to ensure inventory is non-negative
+ALTER TABLE public.bullrhun_products 
+ADD CONSTRAINT bullrhun_products_inventory_quantity_check 
+CHECK (inventory_quantity >= 0);
+
+-- Create index for better query performance
+CREATE INDEX IF NOT EXISTS idx_bullrhun_products_inventory_quantity 
+ON public.bullrhun_products USING btree (inventory_quantity);
+
+COMMIT;

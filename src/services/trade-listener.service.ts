@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseService } from '@/lib/supabase';
 import { config } from '@/config';
+import { TokenRepository } from '@/repositories';
 
 interface TradeMessage {
   signature?: string;
@@ -20,7 +21,7 @@ interface TradeMessage {
 
 
 class BullRhunTradeListener {
-  private supabase: ReturnType<typeof createClient>;
+  private supabase: any; // Using supabaseService with service role
   private ws: WebSocket | null = null;
   private reconnectAttempts: number = 0;
   private isRunning: boolean = false;
@@ -28,10 +29,7 @@ class BullRhunTradeListener {
   private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.supabase = createClient(
-      config.NEXT_PUBLIC_SUPABASE_URL,
-      config.SUPABASE_SERVICE_ROLE_KEY
-    );
+    this.supabase = supabaseService;
     this.currentMint = config.BULLRHUN_MINT || '';
   }
 
@@ -74,16 +72,18 @@ class BullRhunTradeListener {
 
   private async resolveMonitoredMint(): Promise<void> {
     try {
-      const { data } = await this.supabase
-        .from('bullrhun_listeners')
-        .select('monitored_mint')
-        .eq('id', 1)
-        .single();
-
-      const listenerData = data as { monitored_mint: string | null } | null;
-      if (listenerData?.monitored_mint) {
-        this.currentMint = listenerData.monitored_mint;
-        console.log(`📡 Resolved monitored mint: ${this.currentMint}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/bullrhun/listener/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status' })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.monitoredMint) {
+          this.currentMint = data.monitoredMint;
+          console.log(`📡 Resolved monitored mint: ${this.currentMint}`);
+        }
       }
     } catch (error) {
       console.error('Failed to resolve monitored mint:', error);
@@ -186,7 +186,10 @@ class BullRhunTradeListener {
       await this.recordTrade(tradeData);
       
       // Update listener status
-      await this.updateListenerStatus(tradeData);
+      await this.updateListenerStatus({
+        amountSol: tradeData.amountSol,
+        traderAddress: tradeData.trader,
+      });
 
     } catch (error) {
       console.error('Failed to handle message:', error);
@@ -206,13 +209,15 @@ class BullRhunTradeListener {
       return null;
     }
 
+    
+
     const signature = message?.signature || message?.tx || null;
     const venue = message?.pool || message?.venue || null;
     const amountSol = typeof message?.solAmount === 'number' ? message.solAmount : 
-                     (typeof message?.amount === 'number' ? message.amount : null);
+                    (typeof message?.amount === 'number' ? message.amount : null);
     const amountTokens = typeof message?.tokenAmount === 'number' ? message.tokenAmount : null;
     const price = typeof message?.price === 'number' ? message.price : 
-                   (amountSol && amountTokens ? amountSol / amountTokens : null);
+                  (amountSol && amountTokens ? amountSol / amountTokens : null);
     const trader = message?.buyer || message?.trader || message?.account || message?.wallet || null;
 
     // More flexible validation - allow messages with partial data
@@ -269,6 +274,11 @@ class BullRhunTradeListener {
 
       if (response.ok) {
         console.log(`✅ Trade recorded: ${tradeData.signature}`);
+        
+        // Update token price and trade data if we have price data
+        if (tradeData.price !== null) {
+          await this.updateTokenWithTradeData(tradeData);
+        }
       } else {
         console.error(`❌ Failed to record trade: ${response.statusText}`);
       }
@@ -280,6 +290,7 @@ class BullRhunTradeListener {
 
   private async updateListenerStatus(tradeData: {
     amountSol: number | null;
+    traderAddress: string | null;
   }): Promise<void> {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/bullrhun/listener/status`, {
@@ -291,7 +302,7 @@ class BullRhunTradeListener {
         body: JSON.stringify({
           action: 'handle_trade',
           amountSol: tradeData.amountSol || 0,
-          traderAddress: 'detected', // Would be extracted from tradeData.trader
+          traderAddress: tradeData.traderAddress || 'unknown',
         }),
       });
 
@@ -309,13 +320,18 @@ class BullRhunTradeListener {
 
   private async updateHeartbeat(): Promise<void> {
     try {
-      await this.supabase
-        .from('bullrhun_listeners')
-        .upsert({
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/bullrhun/listener/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
           id: 1,
-          monitored_mint: this.currentMint,
-          last_heartbeat: new Date().toISOString(),
-        } as any);
+          monitored_mint: this.currentMint 
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update heartbeat');
+      }
     } catch (error) {
       console.error('Failed to update heartbeat:', error);
     }
@@ -332,6 +348,33 @@ class BullRhunTradeListener {
     setTimeout(() => {
       this.connect();
     }, delay);
+  }
+
+  private async updateTokenWithTradeData(tradeData: {
+    price: number | null;
+    amountTokens: number | null;
+    amountSol: number | null;
+  }): Promise<void> {
+    try {
+      const tokenRepository = new TokenRepository();
+      
+      // Calculate market cap using token supply of 1 billion
+      const marketCap = tradeData.price ? 
+        tradeData.price * 1000000000 : // 1 billion tokens * price
+        undefined;
+      
+      await tokenRepository.updateTokenWithTrade(this.currentMint, {
+        price: tradeData.price || 0,
+        amountTokens: tradeData.amountTokens || 0,
+        amountSol: tradeData.amountSol || 0,
+        marketCap: marketCap,
+        volume24h: tradeData.amountSol || 0 // Use SOL amount as volume indicator
+      });
+      
+      console.log(`💰 Updated token ${this.currentMint} with trade data: price=${tradeData.price}, tokens=${tradeData.amountTokens}, SOL=${tradeData.amountSol}`);
+    } catch (error) {
+      console.error('Failed to update token with trade data:', error);
+    }
   }
 
   // Public methods for external control

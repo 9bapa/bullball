@@ -18,7 +18,10 @@ import {
   getConnection,
   getSigner 
 } from '@/lib/solana';
+import { getWalletPublicKey } from '@/lib/pumpportal';
 import { config, FEATURES } from '@/config';
+import { VersionedTransaction, Connection, Keypair } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { 
   BullrhunError, 
   CycleExecutionResult, 
@@ -27,6 +30,7 @@ import {
   ExternalServiceError 
 } from '@/types/bullrhun.types';
 import { supabase } from '@/lib/supabase';
+const TRADE_LOCAL_URL = 'https://pumpportal.fun/api/trade-local'
 
 export class CycleService {
   private cycleRepo = new CycleRepository();
@@ -94,18 +98,29 @@ export class CycleService {
         throw new ExternalServiceError(feeResult.error || 'Fee collection failed', 'PUMPPORTAL');
       }
 
-      // Step 2: Calculate fees from BALANCE (not from fee amount)
-      const balanceAmount = initResult.balanceSol || 0; // Use wallet balance
-      const platformFee = balanceAmount * 0.12; // 12% of BALANCE
-      const rewardFee = balanceAmount * 0.10; // 10% of BALANCE
-      const tokenAmount = balanceAmount - platformFee - rewardFee; // Remaining for tokens
+      // Step 2: Get updated balance after fee collection and calculate fees
+      const connection = getConnection();
+      const signer = getSigner();
+      const currentBalance = await connection.getBalance(signer.publicKey);
+      const balanceAmount = currentBalance / 1e9; // Use UPDATED balance after fee collection
+      
+      // Reserve 0.005 SOL for transaction fees FIRST
+      const transactionFees = 0.005;
+      const availableForDistribution = balanceAmount - transactionFees;
+      
+      const platformFee = availableForDistribution * 0.12; // 12% of AVAILABLE balance
+      const rewardFee = availableForDistribution * 0.10; // 10% of AVAILABLE balance
+      const tokenAmount = availableForDistribution - platformFee - rewardFee; // Remaining for tokens
       
       console.log(`💰 Fee Distribution from ${balanceAmount} SOL balance:`);
+      console.log(`   Transaction fees: ${transactionFees} SOL (reserved)`);
+      console.log(`   Available for distribution: ${availableForDistribution} SOL`);
       console.log(`   Platform fee: ${platformFee} SOL (12%)`);
       console.log(`   Reward fee: ${rewardFee} SOL (10%)`);
-      console.log(`   Token buying: ${tokenAmount} SOL (${((tokenAmount / balanceAmount) * 100).toFixed(1)}%)`);
+      console.log(`   Token buying: ${tokenAmount} SOL (${((tokenAmount / availableForDistribution) * 100).toFixed(1)}%)`);
       
       // Step 3: Execute buy with token amount
+      console.log(`🔄 Executing buy with tokenAmount: ${tokenAmount} SOL`);
       const buyResult = await this.executeBuy(cycle.id, targetMint, tokenAmount);
       
       // Check if buy was successful before proceeding with fee transfers
@@ -191,21 +206,11 @@ export class CycleService {
       
       console.log(`💳 Current wallet balance: ${balanceSol} SOL`);
       
-      // Check if balance is sufficient for fee collection and operations
-      const MIN_BALANCE_FOR_FEES = 0.02; // 0.02 SOL minimum (10% = 0.002 SOL fee)
+      // Removed minimum balance requirement - allow fee collection from any balance
       
-      if (balanceSol < MIN_BALANCE_FOR_FEES) {
-        const message = `Balance ${balanceSol} SOL below minimum ${MIN_BALANCE_FOR_FEES} SOL. Skipping fee collection and cycle execution.`;
-        console.warn(`⚠️ ${message}`);
-        
-        return {
-          shouldProceed: false,
-          error: message,
-          balanceSol
-        };
-      }
+      // Note: Fees are only collected when actual cycle executes successfully
       
-      console.log(`✅ Balance sufficient (${balanceSol} SOL >= ${MIN_BALANCE_FOR_FEES} SOL). Proceeding with fee collection...`);
+      console.log(`✅ Balance sufficient (${balanceSol} SOL). Proceeding with fee collection...`);
       
       return {
         shouldProceed: true,
@@ -230,19 +235,60 @@ export class CycleService {
     error?: string;
   }> {
     try {
-      // Get current wallet balance and calculate 10% as fee
-      const connection = getConnection();
-      const signer = getSigner();
-      const balance = await connection.getBalance(signer.publicKey);
-      const balanceSol = balance / 1e9;
+      // Use local API approach with transaction signing
+      console.log(`💰 Collecting creator fees via PumpPortal local API`);
       
-      // Calculate 10% of current wallet balance as fee amount
-      const feeAmount = Math.max(0.001, balanceSol * 0.10); // Minimum 0.001 SOL
+      const response = await fetch('https://pumpportal.fun/api/trade-local', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          publicKey: getWalletPublicKey(),
+          action: 'collectCreatorFee',
+          priorityFee: 0.000001,
+        }),
+      });
       
-      console.log(`💰 Collecting ${feeAmount} SOL fee (${((feeAmount / balanceSol) * 100).toFixed(1)}% of wallet balance)`);
+      // console.log(`PumpPortal API response:`, response);
       
-      const signature = await collectCreatorFee(cycle.mint, feeAmount);
-      return { success: true, signature, amount: feeAmount };
+      if (response.status === 200) { // successfully generated transaction
+        const data = await response.arrayBuffer();
+        const tx = VersionedTransaction.deserialize(new Uint8Array(data));
+        const signerKeyPair = Keypair.fromSecretKey(bs58.decode(process.env.WALLET_DEV_KEY!));
+        tx.sign([signerKeyPair]);
+        
+        const web3Connection = new Connection(
+          config.SOLANA_RPC_ENDPOINT,
+          'confirmed',
+        );
+        
+        const signature = await web3Connection.sendTransaction(tx);
+        console.log(`🔗 Transaction: https://solscan.io/tx/${signature}`);
+        
+        // Sleep for 2 seconds to allow transaction to be processed
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Get current wallet balance
+        const signer = getSigner();
+        const currentBalance = await web3Connection.getBalance(signer.publicKey);
+        const balanceSol = currentBalance / 1e9;
+        
+        console.log(`💰 Current wallet balance: ${balanceSol} SOL after fee collection`);
+        
+        // Update metrics with fee collection amount
+        try {
+          await this.metricsRepo.incrementFeesCollected(balanceSol);
+          console.log(`📊 Updated total_fees_collected metric +${balanceSol} SOL`);
+        } catch (metricsError) {
+          console.error('❌ Failed to update metrics:', metricsError);
+        }
+        
+        return { success: true, signature };
+      } else {
+        console.log(response.statusText); // log error
+        throw new Error(`PumpPortal API error: ${response.statusText}`);
+      }
     } catch (error) {
       return { 
         success: false, 
@@ -264,10 +310,10 @@ export class CycleService {
     if (platformFee > 0 && config.WALLET_PLATFORM) {
       try {
         await transferSol(config.WALLET_PLATFORM!, platformFee);
-        console.log(`Platform fee of ${platformFee} SOL transferred`);
+        console.log(`Platform fee of ${platformFee} SOL collected via PumpPortal API`);
       } catch (error) {
-        console.error('Platform fee transfer failed:', error instanceof Error ? error.message : error);
-        // Continue cycle even if platform transfer fails
+        console.error('Platform fee collection failed:', error instanceof Error ? error.message : error);
+        // Continue cycle even if platform collection fails
       }
     }
 
@@ -295,7 +341,8 @@ export class CycleService {
     liquidityAmount: number;
     error?: string;
   }> {
-    const buyAmount = Math.max(0, availableAmount - 0.006); // Reserve 0.001 SOL for fees
+    const buyAmount = Math.max(0, availableAmount); // No need to reserve fees - handled in fee distribution
+    console.log(`💰 executeBuy: availableAmount=${availableAmount} SOL, buyAmount=${buyAmount} SOL`);
     let liquidityAmount = 0;
 
     if (buyAmount < config.MIN_BUY_AMOUNT_SOL) {
@@ -484,6 +531,11 @@ export class CycleService {
   }
 
   private async getTokenStatus(mint: string): Promise<{ is_graduated: boolean } | null> {
+    if (!supabase) {
+      console.warn('Supabase client not available, assuming token is not graduated');
+      return { is_graduated: false };
+    }
+    
     const { data: tokenStatus, error } = await supabase.from('bullrhun_tokens')
     .select('is_graduated')
     .eq('mint', config.BULLRHUN_MINT)

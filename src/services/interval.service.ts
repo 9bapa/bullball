@@ -2,7 +2,9 @@ import { CycleService } from '@/services/cycle.service';
 import { LeaderRepository, ListenerRepository } from '@/repositories';
 import { config } from '@/config';
 import { getTradeListener } from '@/services/trade-listener.service';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+const supabaseClient = supabase!;
 
 export class IntervalService {
   private cycleService: CycleService;
@@ -76,9 +78,9 @@ export class IntervalService {
       this.intervalId = null;
     }
     
-    // Remove leadership using supabaseAdmin
+    // Remove leadership using supabaseClient
     try {
-      await supabaseAdmin
+      await supabase
         .from('bullrhun_leaders')
         .update({
           instance_id: null,
@@ -178,7 +180,7 @@ export class IntervalService {
 
   private async getLastCycleTime(): Promise<number | null> {
     try {
-      const { data } = await supabaseAdmin
+      const { data } = await supabase
         .from('bullrhun_cycles')
         .select('executed_at')
         .not('isnull', 'executed_at')
