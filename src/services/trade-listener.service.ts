@@ -72,21 +72,23 @@ class BullRhunTradeListener {
 
   private async resolveMonitoredMint(): Promise<void> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/bullrhun/listener/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'status' })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.monitoredMint) {
-          this.currentMint = data.monitoredMint;
-          console.log(`📡 Resolved monitored mint: ${this.currentMint}`);
-        }
+      // Use direct service role access instead of API call
+      const { data, error } = await supabaseService
+        .from('bullrhun_listeners')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (error) {
+        this.currentMint = config.BULLRHUN_MINT || '';
+        console.warn('Failed to resolve monitored mint, using default:', error);
+      } else {
+        this.currentMint = data.monitored_mint || config.BULLRHUN_MINT || '';
+        console.log(`📡 Resolved monitored mint: ${this.currentMint}`);
       }
     } catch (error) {
       console.error('Failed to resolve monitored mint:', error);
+      this.currentMint = config.BULLRHUN_MINT || '';
     }
   }
 
@@ -320,17 +322,21 @@ class BullRhunTradeListener {
 
   private async updateHeartbeat(): Promise<void> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/bullrhun/listener/heartbeat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id: 1,
+      // Use direct service role access instead of API call
+      const { data, error } = await supabaseService
+        .from('bullrhun_listeners')
+        .update({ 
+          last_heartbeat: new Date().toISOString(),
           monitored_mint: this.currentMint 
         })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update heartbeat');
+        .eq('id', 1)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Failed to update heartbeat:', error);
+      } else {
+        console.log(`💓 Heartbeat updated: ${this.currentMint}`);
       }
     } catch (error) {
       console.error('Failed to update heartbeat:', error);
