@@ -27,20 +27,24 @@ export function DynamicWalletProvider({ children }: DynamicWalletProviderProps) 
     return () => clearTimeout(initTimer)
   }, [])
 
-  // Don't render Dynamic SDK until everything is ready
-  if (!isReady) {
-    return <>{children}</>
-  }
-
+  // Always provide the context, but only enable features when ready
   return (
     <DynamicContextProvider 
       settings={{ 
-        // You'll need to get your environmentId from https://app.dynamic.xyz/dashboard/developer
-        environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID as string,
+        environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
         walletConnectors: [SolanaWalletConnectors], 
-      }} 
+      }}
     >
-      {children}
+      {isReady ? (
+        children
+      ) : (
+        <div className="min-h-screen">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      )}
     </DynamicContextProvider>
   )
 }
@@ -66,28 +70,6 @@ export function DynamicWalletButton() {
 export function useDynamicWallet() {
   const [dbUser, setDbUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
-  const [isReady, setIsReady] = React.useState(false)
-  
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true)
-    }, 1500) // Slightly longer delay for the hook
-    
-    return () => clearTimeout(timer)
-  }, [])
-  
-  // Return fallback state during SSR or when Dynamic SDK is not available
-  if (!isReady) {
-    return {
-      connected: false,
-      publicKey: null,
-      user: null,
-      primaryWallet: null,
-      dbUser,
-      loading: false,
-      isAdmin: false
-    }
-  }
   
   try {
     const { user, primaryWallet } = useDynamicContext()
@@ -149,9 +131,6 @@ export function useDynamicWallet() {
       fetchUserData()
     }, [primaryWallet])
     
-    // Check if user has admin role from database
-    const isAdmin = dbUser?.role === 'admin' || dbUser?.role === 'super_admin'
-    
     return {
       connected: !!primaryWallet,
       publicKey: primaryWallet?.address || null,
@@ -161,7 +140,8 @@ export function useDynamicWallet() {
         avatar_url: dbUser?.avatar_url || '/avatar.jpg',
         role: dbUser?.role || 'user',
       },
-      isAdmin,
+      dbUser,
+      isAdmin: dbUser?.role === 'admin' || dbUser?.role === 'super_admin',
       connecting: loading
     }
   } catch (error) {
@@ -172,7 +152,8 @@ export function useDynamicWallet() {
       user: null,
       primaryWallet: null,
       dbUser,
-      loading: false
+      loading: false,
+      isAdmin: false
     }
   }
 }
