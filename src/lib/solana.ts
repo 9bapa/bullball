@@ -12,11 +12,22 @@ export const getTokenInfo = async (mint: string) => {
 }
 
 export const getConnection = () => {
+  // Skip initialization during build time (when env vars might not be available)
+  if (!process.env.SOLANA_RPC_ENDPOINT && typeof window === 'undefined') {
+    // During build time, return a mock connection
+    return new Connection('https://api.mainnet-beta.solana.com', 'confirmed')
+  }
+  
   const endpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
   return new Connection(endpoint, 'confirmed')
 }
 
 export const getSigner = () => {
+  // Skip during build time
+  if (typeof window === 'undefined' && !process.env.WALLET_DEV_KEY && !process.env.WALLET_DEV && !process.env.SOLANA_PRIVATE_KEY_BASE58) {
+    throw new Error('Wallet not available during build time');
+  }
+  
   const secret = process.env.WALLET_DEV_KEY || process.env.WALLET_DEV || process.env.SOLANA_PRIVATE_KEY_BASE58
   if (!secret) throw new Error('Missing WALLET_DEV_KEY, WALLET_DEV or SOLANA_PRIVATE_KEY_BASE58')
   return Keypair.fromSecretKey(bs58.decode(secret))
