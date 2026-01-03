@@ -16,6 +16,22 @@ interface DynamicWalletProviderProps {
 }
 
 export function DynamicWalletProvider({ children }: DynamicWalletProviderProps) {
+  const [isReady, setIsReady] = React.useState(false)
+
+  React.useEffect(() => {
+    // Wait for client to be ready and give time for all services to initialize
+    const initTimer = setTimeout(() => {
+      setIsReady(true)
+    }, 1000) // 1 second delay to ensure all services are loaded
+
+    return () => clearTimeout(initTimer)
+  }, [])
+
+  // Don't render Dynamic SDK until everything is ready
+  if (!isReady) {
+    return <>{children}</>
+  }
+
   return (
     <DynamicContextProvider 
       settings={{ 
@@ -50,6 +66,28 @@ export function DynamicWalletButton() {
 export function useDynamicWallet() {
   const [dbUser, setDbUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const [isReady, setIsReady] = React.useState(false)
+  
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsReady(true)
+    }, 1500) // Slightly longer delay for the hook
+    
+    return () => clearTimeout(timer)
+  }, [])
+  
+  // Return fallback state during SSR or when Dynamic SDK is not available
+  if (!isReady) {
+    return {
+      connected: false,
+      publicKey: null,
+      user: null,
+      primaryWallet: null,
+      dbUser,
+      loading: false,
+      isAdmin: false
+    }
+  }
   
   try {
     const { user, primaryWallet } = useDynamicContext()
@@ -62,7 +100,8 @@ export function useDynamicWallet() {
         user: null,
         primaryWallet: null,
         dbUser,
-        loading: false
+        loading: false,
+        isAdmin: false
       }
     }
     
