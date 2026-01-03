@@ -171,21 +171,50 @@ export class CycleService {
       };
 
     } catch (error) {
-      // Mark cycle as failed
+      // Enhanced error handling for different error types
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const failedCycle = await this.cycleRepo.updateCycleStatus(
         cycle.id,
         CycleStatus.FAILED,
         {
-          error_message: error instanceof Error ? error.message : 'Unknown error',
+          error_message: errorMessage,
         },
-        error instanceof Error ? error.message : 'Unknown error'
+        errorMessage
       );
 
       console.error(`Cycle ${cycle.id} failed:`, error);
 
+      // Provide actionable error messages for specific error types
+      if (error instanceof ExternalServiceError) {
+        if (error.code === 'PUMPPORTAL_ERROR' && errorMessage.includes('below minimum')) {
+          // Extract actual balance from error message for dynamic analysis
+          const balanceMatch = errorMessage.match(/Amount\s+([\d.]+)\s+SOL/);
+          const currentBalance = balanceMatch ? parseFloat(balanceMatch[1]) : 0;
+          const requiredMinimum = 0.001; // config.MIN_TRADE_AMOUNT
+          const shortfall = requiredMinimum - currentBalance;
+          
+          console.error('💰 Wallet Analysis - Insufficient Balance:');
+          console.error(`  ⚠️  Current Available: ${currentBalance.toFixed(9)} SOL`);
+          console.error(`  🔒 Required Minimum: ${requiredMinimum} SOL`);
+          console.error(`  💸 Shortfall: ${shortfall.toFixed(9)} SOL`);
+          console.error('🔧 Solutions:');
+          console.error(`  1. Add at least ${shortfall.toFixed(6)} SOL to wallet`);
+          console.error('  2. Reduce minimum trade amount in config');
+          console.error('  3. Skip trading and focus on fee collection only');
+        }
+      }
+
+      if (errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+        console.error('🌐 Network Issue Detected:');
+        console.error('  🔧 Solutions:');
+        console.error('  1. Check internet connectivity');
+        console.error('  2. Verify Solana network status');
+        console.error('  3. Retry after network stabilizes');
+      }
+
       return {
         cycle: failedCycle,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       };
     }
   }
