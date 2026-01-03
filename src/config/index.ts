@@ -100,7 +100,7 @@ export const FEATURES = {
   LIQUIDITY_ENABLED: !!env.PUMPSWAP_POOL,
   REWARDS_ENABLED: !!env.WALLET_REWARD && (config.REWARD_SOL_AMOUNT || 0) > 0,
   PLATFORM_FEES_ENABLED: !!env.WALLET_PLATFORM,
-  CRON_ENABLED: true, // Always enabled in new design
+  CRON_ENABLED: false, // Disabled for testing
 } as const;
 
 export default config;

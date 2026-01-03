@@ -343,10 +343,14 @@ let cronManager: CronJobManager | null = null;
 export function getCronManager(): CronJobManager {
   if (!cronManager) {
     cronManager = new CronJobManager();
-    // Auto-start cron when first created
-    cronManager.start().catch(error => {
-      console.error('Failed to auto-start cron manager:', error);
-    });
+    // Auto-start cron when first created (if enabled)
+    if (FEATURES.CRON_ENABLED) {
+      cronManager.start().catch(error => {
+        console.error('Failed to auto-start cron manager:', error);
+      });
+    } else {
+      console.log('⚠️ CRON_DISABLED - Cron job manager not started');
+    }
   }
   return cronManager;
 }
