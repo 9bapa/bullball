@@ -48,68 +48,92 @@ export function DynamicWalletButton() {
 }
 
 export function useDynamicWallet() {
-  const { user, primaryWallet } = useDynamicContext()
   const [dbUser, setDbUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    const fetchUserData = async () => {
-      if (!primaryWallet?.address) {
-        setDbUser(null)
-        setLoading(false)
-        return
-      }
-
-      // Check if Supabase is available
-      if (!supabase) {
-        console.warn('Supabase not initialized - user data not available')
-        setDbUser(null)
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Get user data from database
-
-            const response = await fetch('/api/user/create', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                wallet_address: primaryWallet.address.toLowerCase(),
-              }),
-            })
-
-            const result = await response.json()
-            if (!response.ok) {
-              throw new Error(result.error || 'Failed to create user')
-            }
-        setDbUser(result.user)
-      } catch (error) {
-        console.error('Supabase error:', error)
-        setDbUser(null)
-      } finally {
-        setLoading(false)
+  
+  try {
+    const { user, primaryWallet } = useDynamicContext()
+    
+    // Handle null client gracefully
+    if (!user && !primaryWallet) {
+      return {
+        connected: false,
+        publicKey: null,
+        user: null,
+        primaryWallet: null,
+        dbUser,
+        loading: false
       }
     }
-
-    fetchUserData()
-  }, [primaryWallet?.address, supabase])
-
-  // Check if user has admin role from database
-  const isAdmin = dbUser?.role === 'admin' || dbUser?.role === 'super_admin'
-  
-  return {
-    connected: !!primaryWallet,
-    publicKey: primaryWallet?.address || null,
-    user: {
-      ...user,
-      username: dbUser?.username || 'none set',
-      avatar_url: dbUser?.avatar_url || '/avatar.jpg',
-      role: dbUser?.role || 'user',
-    },
-    isAdmin,
-    connecting: loading
+    
+    React.useEffect(() => {
+      const fetchUserData = async () => {
+        if (!primaryWallet?.address) {
+          setDbUser(null)
+          setLoading(false)
+          return
+        }
+        
+        // Check if Supabase is available
+        if (!supabase) {
+          console.warn('Supabase not initialized - user data not available')
+          setDbUser(null)
+          setLoading(false)
+          return
+        }
+        
+        try {
+          // Get user data from database
+          const response = await fetch('/api/user/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              wallet_address: primaryWallet.address.toLowerCase(),
+            }),
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            setDbUser(userData)
+          } else {
+            console.error('Failed to fetch user data:', response.statusText)
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      fetchUserData()
+    }, [primaryWallet])
+    
+    // Check if user has admin role from database
+    const isAdmin = dbUser?.role === 'admin' || dbUser?.role === 'super_admin'
+    
+    return {
+      connected: !!primaryWallet,
+      publicKey: primaryWallet?.address || null,
+      user: {
+        ...user,
+        username: dbUser?.username || 'none set',
+        avatar_url: dbUser?.avatar_url || '/avatar.jpg',
+        role: dbUser?.role || 'user',
+      },
+      isAdmin,
+      connecting: loading
+    }
+  } catch (error) {
+    console.warn('Dynamic SDK not available, using fallback state:', error)
+    return {
+      connected: false,
+      publicKey: null,
+      user: null,
+      primaryWallet: null,
+      dbUser,
+      loading: false
+    }
   }
 }
