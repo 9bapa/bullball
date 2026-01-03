@@ -15,37 +15,67 @@ interface DynamicWalletProviderProps {
   children: React.ReactNode
 }
 
+// Create a context to track if Dynamic SDK is ready
+const DynamicReadyContext = React.createContext<{ isReady: boolean }>({ isReady: false })
+
 export function DynamicWalletProvider({ children }: DynamicWalletProviderProps) {
   const [isReady, setIsReady] = React.useState(false)
+  const [shouldRenderProvider, setShouldRenderProvider] = React.useState(false)
+  const [enableDynamic, setEnableDynamic] = React.useState(false)
 
   React.useEffect(() => {
-    // Wait for client to be ready and give time for all services to initialize
-    const initTimer = setTimeout(() => {
-      setIsReady(true)
-    }, 1000) // 1 second delay to ensure all services are loaded
+    // Wait for page to fully load before even considering Dynamic SDK
+    const pageLoadTimer = setTimeout(() => {
+      setShouldRenderProvider(true)
+    }, 3000) // 3 second delay
 
-    return () => clearTimeout(initTimer)
+    // Then wait even longer before enabling Dynamic SDK
+    const enableTimer = setTimeout(() => {
+      setEnableDynamic(true)
+      setIsReady(true)
+    }, 5000) // 5 second delay
+
+    return () => {
+      clearTimeout(pageLoadTimer)
+      clearTimeout(enableTimer)
+    }
   }, [])
 
-  // Always provide the context, but only enable features when ready
-  return (
-    <DynamicContextProvider 
-      settings={{ 
-        environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
-        walletConnectors: [SolanaWalletConnectors], 
-      }}
-    >
-      {isReady ? (
-        children
-      ) : (
-        <div className="min-h-screen">
-          <div className="animate-pulse">
-            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded"></div>
+  // Don't render anything until page is ready
+  if (!shouldRenderProvider) {
+    return (
+      <DynamicReadyContext.Provider value={{ isReady: false }}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse text-center">
+            <div className="h-8 w-32 bg-gray-200 rounded mx-auto mb-4"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded mx-auto"></div>
+            <p className="text-sm text-gray-500 mt-4">Initializing...</p>
           </div>
         </div>
-      )}
-    </DynamicContextProvider>
+      </DynamicReadyContext.Provider>
+    )
+  }
+
+  // Render without Dynamic SDK until explicitly enabled
+  if (!enableDynamic) {
+    return (
+      <DynamicReadyContext.Provider value={{ isReady: false }}>
+        {children}
+      </DynamicReadyContext.Provider>
+    )
+  }
+
+  return (
+    <DynamicReadyContext.Provider value={{ isReady }}>
+      <DynamicContextProvider 
+        settings={{ 
+          environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
+          walletConnectors: [SolanaWalletConnectors], 
+        }}
+      >
+        {children}
+      </DynamicContextProvider>
+    </DynamicReadyContext.Provider>
   )
 }
 
@@ -70,6 +100,20 @@ export function DynamicWalletButton() {
 export function useDynamicWallet() {
   const [dbUser, setDbUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const { isReady: dynamicReady } = React.useContext(DynamicReadyContext)
+  
+  // Return fallback state if Dynamic SDK is not ready
+  if (!dynamicReady) {
+    return {
+      connected: false,
+      publicKey: null,
+      user: null,
+      primaryWallet: null,
+      dbUser,
+      loading: false,
+      isAdmin: false
+    }
+  }
   
   try {
     const { user, primaryWallet } = useDynamicContext()
