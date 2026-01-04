@@ -20,72 +20,31 @@ const DynamicReadyContext = React.createContext<{ isReady: boolean }>({ isReady:
 
 export function DynamicWalletProvider({ children }: DynamicWalletProviderProps) {
   const [isReady, setIsReady] = React.useState(false)
-  const [shouldRenderProvider, setShouldRenderProvider] = React.useState(false)
-  const [enableDynamic, setEnableDynamic] = React.useState(false)
 
   React.useEffect(() => {
-    // Wait for page to fully load before even considering Dynamic SDK
-    const pageLoadTimer = setTimeout(() => {
-      setShouldRenderProvider(true)
-    }, 3000) // 3 second delay
-
-    // Then wait even longer before enabling Dynamic SDK
-    const enableTimer = setTimeout(() => {
-      setEnableDynamic(true)
+    // Simple initialization with proper Dynamic SDK settings
+    const timer = setTimeout(() => {
       setIsReady(true)
-    }, 5000) // 5 second delay
+    }, 1000) // 1 second delay for initialization
 
-    return () => {
-      clearTimeout(pageLoadTimer)
-      clearTimeout(enableTimer)
-    }
+    return () => clearTimeout(timer)
   }, [])
 
-  // Don't render anything until page is ready
-  if (!shouldRenderProvider) {
-    return (
-      <DynamicReadyContext.Provider value={{ isReady: false }}>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-pulse text-center">
-            <div className="h-8 w-32 bg-gray-200 rounded mx-auto mb-4"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded mx-auto"></div>
-            <p className="text-sm text-gray-500 mt-4">Initializing...</p>
-          </div>
-        </div>
-      </DynamicReadyContext.Provider>
-    )
-  }
-
-  // Create fallback context for when Dynamic SDK is not ready
-  const FallbackProvider = ({ children }: { children: React.ReactNode }) => {
-    return (
+  return (
+    <DynamicReadyContext.Provider value={{ isReady }}>
       <DynamicContextProvider 
         settings={{ 
-          environmentId: "fallback", // Invalid env to prevent initialization
-          walletConnectors: [], // No connectors
+          environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
+          walletConnectors: [SolanaWalletConnectors],
+          // Proper Dynamic SDK settings to prevent null client errors
+          initialAuthenticationMode: 'connect-only',
+          logLevel: 'ERROR', // Only show errors
+          debugError: false, // Disable debug errors
+          networkValidationMode: 'never', // Skip network validation during init
         }}
       >
         {children}
       </DynamicContextProvider>
-    )
-  }
-
-  return (
-    <DynamicReadyContext.Provider value={{ isReady }}>
-      {enableDynamic ? (
-        <DynamicContextProvider 
-          settings={{ 
-            environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
-            walletConnectors: [SolanaWalletConnectors], 
-          }}
-        >
-          {children}
-        </DynamicContextProvider>
-      ) : (
-        <FallbackProvider>
-          {children}
-        </FallbackProvider>
-      )}
     </DynamicReadyContext.Provider>
   )
 }
