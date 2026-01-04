@@ -56,25 +56,36 @@ export function DynamicWalletProvider({ children }: DynamicWalletProviderProps) 
     )
   }
 
-  // Render without Dynamic SDK until explicitly enabled
-  if (!enableDynamic) {
+  // Create fallback context for when Dynamic SDK is not ready
+  const FallbackProvider = ({ children }: { children: React.ReactNode }) => {
     return (
-      <DynamicReadyContext.Provider value={{ isReady: false }}>
+      <DynamicContextProvider 
+        settings={{ 
+          environmentId: "fallback", // Invalid env to prevent initialization
+          walletConnectors: [], // No connectors
+        }}
+      >
         {children}
-      </DynamicReadyContext.Provider>
+      </DynamicContextProvider>
     )
   }
 
   return (
     <DynamicReadyContext.Provider value={{ isReady }}>
-      <DynamicContextProvider 
-        settings={{ 
-          environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
-          walletConnectors: [SolanaWalletConnectors], 
-        }}
-      >
-        {children}
-      </DynamicContextProvider>
+      {enableDynamic ? (
+        <DynamicContextProvider 
+          settings={{ 
+            environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "f76c2b30-394e-4600-9934-a99fbd4b0760",
+            walletConnectors: [SolanaWalletConnectors], 
+          }}
+        >
+          {children}
+        </DynamicContextProvider>
+      ) : (
+        <FallbackProvider>
+          {children}
+        </FallbackProvider>
+      )}
     </DynamicReadyContext.Provider>
   )
 }
