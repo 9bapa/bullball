@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,7 +14,9 @@ import { Leaderboard, Achievements, QuickStats } from '@/components/ui/Gamificat
 import { useCartStore } from '@/store/cart'
 import { SubmitDesignModal } from '@/components/modals/SubmitDesignModal'
 import { BecomeVendorModal } from '@/components/modals/BecomeVendorModal'
-import { useDynamicWallet } from '@/components/wallet/DynamicWalletProvider'
+import { SolanaWalletProvider } from '@/components/wallet_solana/WalletProvider'
+import { useUserContext } from '@/context/userContext'
+import { WalletConnect } from '@/components/wallet_solana/WalletConnect'
 import { SharedFooter } from '@/components/layout/shared-footer'
 import { 
   Sparkles, 
@@ -39,9 +41,16 @@ export default function StoreFront() {
   const [isSubmitDesignOpen, setIsSubmitDesignOpen] = useState(false)
   const [isBecomeVendorOpen, setIsBecomeVendorOpen] = useState(false)
   const [tradeGameData, setTradeGameData] = useState<any>(null)
-  const { connected, publicKey } = useDynamicWallet()
+  const { connected, publicKey } = useUserContext()
+
+    // Add ref to prevent multiple API calls
+  const metricsFetchedRef = useRef(false)
 
   useEffect(() => {
+    // Prevent multiple API calls during development or re-renders
+    if (metricsFetchedRef.current) return
+    metricsFetchedRef.current = true
+    
     // Fetch trade game data for main page
     const fetchTradeData = async () => {
       try {
@@ -54,7 +63,7 @@ export default function StoreFront() {
     }
     
     fetchTradeData()
-  }, [])
+  }, [isLoaded])
 
   useEffect(() => {
     setIsLoaded(true)
@@ -111,7 +120,7 @@ export default function StoreFront() {
       {/* Hero Section with Ticker - Show on all screen sizes */}
       <section className="pt-16 md:pt-24 min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20">
         {/* Trending Ticker */}
-        <TickerTape className="w-full" />
+        {/* <TickerTape className="w-full" /> */}
         
         {/* Hero Content */}
         <div className="container mx-auto px-4 py-12 text-center">
@@ -422,11 +431,7 @@ export default function StoreFront() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="text-xl text-gray-300 mb-4">Connect your wallet to see balances</div>
-                      <button className="px-6 py-3 bg-gradient-to-r from-meme-purple to-meme-blue text-white rounded-lg hover:from-meme-purple-dark hover:to-meme-blue-dark transition-all">
-                        <Coins className="w-5 h-5 mr-2" />
-                        Connect Wallet
-                      </button>
+                      <WalletConnect />
                     </div>
                   )}
                 </div>

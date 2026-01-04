@@ -18,6 +18,9 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { SharedHeader } from '@/components/layout/shared-header'
+import { BottomNav } from '@/components/layout/mobile-nav'
+import { SharedFooter } from '@/components/layout/shared-footer'
+
 
 export default function SubmitDesignPage() {
   const [formData, setFormData] = useState({
@@ -68,6 +71,7 @@ export default function SubmitDesignPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-meme-dark text-white">
       <SharedHeader />
       
@@ -322,5 +326,8 @@ export default function SubmitDesignPage() {
         </div>
       </section>
     </div>
+    <BottomNav activeTab="design" />
+    <SharedFooter />
+    </>
   )
 }

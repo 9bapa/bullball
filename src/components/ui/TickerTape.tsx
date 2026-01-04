@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface BullRhunToken {
   symbol: string
@@ -36,44 +36,86 @@ const memeMessages = [
   "🎭 When Lambo?"
 ];
 
-export function TickerTape({ className = '' }: TickerProps) {
-  const [bullrhunToken, setBullrhunToken] = useState<BullRhunToken | null>(null)
+// Shared state for all TickerTape instances
+let sharedTokenData: BullRhunToken | null = null
+let sharedTokenSubscribers: Set<(data: BullRhunToken | null) => void> = new Set()
+let sharedInterval: NodeJS.Timeout | null = null
+let lastFetchTime = 0
 
-  const [isPaused, setIsPaused] = useState(false)
+function subscribeToTokenData(callback: (data: BullRhunToken | null) => void) {
+  sharedTokenSubscribers.add(callback)
+  callback(sharedTokenData)
+  
+  return () => {
+    sharedTokenSubscribers.delete(callback)
+    if (sharedTokenSubscribers.size === 0 && sharedInterval) {
+      clearInterval(sharedInterval)
+      sharedInterval = null
+    }
+  }
+}
 
-  // Fetch real token data from API
-  useEffect(() => {
-    const fetchTokenData = async () => {
-      try {
-        const response = await fetch('/api/tokens/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8X')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.token) {
-            const token = data.token
-            setBullrhunToken({
-              symbol: 'BULLRHUN',
-              name: 'BullRhun', 
-              price: token.price ? token.price.toString() : '0.00000000',
-              change: 0, // Will calculate from previous price
-              volume: token.volume_24h ? `$${(token.volume_24h / 1000000).toFixed(1)}M` : '$0M',
-              marketCap: token.market_cap ? `$${(token.market_cap / 1000000).toFixed(1)}M` : '$0M',
-              address: token.mint,
-              pumpFunLink: `https://pump.fun/coin/${token.mint}`,
-              memeMessage: memeMessages[0]
-            })
-          }
+function notifyAllSubscribers(data: BullRhunToken | null) {
+  sharedTokenData = data
+  sharedTokenSubscribers.forEach(callback => callback(data))
+}
+
+async function fetchTokenData() {
+  // Throttle to prevent excessive calls (minimum 25 seconds between fetches)
+  const now = Date.now()
+  if (now - lastFetchTime < 25000) {
+    return
+  }
+  lastFetchTime = now
+  
+  try {
+    const response = await fetch('/api/tokens/2XioaBY8RkPnocb2ym7dSuGsDZbxbrYsoTcUHf8X')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.token) {
+        const token = data.token
+        const tokenData: BullRhunToken = {
+          symbol: 'BULLRHUN',
+          name: 'BullRhun', 
+          price: token.price ? token.price.toString() : '0.00000000',
+          change: 0, // Will calculate from previous price
+          volume: token.volume_24h ? `$${(token.volume_24h / 1000000).toFixed(1)}M` : '$0M',
+          marketCap: token.market_cap ? `$${(token.market_cap / 1000000).toFixed(1)}M` : '$0M',
+          address: token.mint,
+          pumpFunLink: `https://pump.fun/coin/${token.mint}`,
+          memeMessage: memeMessages[Math.floor(Math.random() * memeMessages.length)]
         }
-      } catch (error) {
-        console.error('Failed to fetch token data:', error)
+        notifyAllSubscribers(tokenData)
       }
     }
+  } catch (error) {
+    console.error('Failed to fetch token data:', error)
+  }
+}
 
-    fetchTokenData()
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchTokenData, 30000)
+export function TickerTape({ className = '' }: TickerProps) {
+  const [bullrhunToken, setBullrhunToken] = useState<BullRhunToken | null>(sharedTokenData)
+  const [isPaused, setIsPaused] = useState(false)
+  const unsubscribeRef = useRef<(() => void) | null>(null)
+
+  // Subscribe to shared token data
+  useEffect(() => {
+    unsubscribeRef.current = subscribeToTokenData(setBullrhunToken)
     
-    return () => clearInterval(interval)
-  }, [isPaused])
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+      }
+    }
+  }, [])
+
+  // Set up shared interval only once
+  useEffect(() => {
+    if (!sharedInterval) {
+      fetchTokenData()
+      sharedInterval = setInterval(fetchTokenData, 30000)
+    }
+  }, [])
 
   // Create multiple instances for seamless scroll
   const tickerItems = bullrhunToken ? Array(6).fill(bullrhunToken) : []

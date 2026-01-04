@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useDynamicWallet } from '@/components/wallet/DynamicWalletProvider'
+import { useUserContext } from '@/context/userContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,7 @@ import { vendorService, UpdateVendorRequest } from '@/services/vendor.service'
 import Link from 'next/link'
 import { SharedHeader } from '@/components/layout/shared-header'
 import { SharedFooter } from '@/components/layout/shared-footer'
-import { AdminProtectedRoute } from '@/components/wallet/WalletConnectButton'
+import { AdminProtectedRoute } from '@/components/wallet_solana/AdminGate'
 
 interface VendorFormData {
   name: string
@@ -64,7 +64,7 @@ const vendorCategories = [
 
 export default function EditVendorPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const { connected, publicKey, isAdmin } = useDynamicWallet()
+  const { connected, publicKey, isAdmin } = useUserContext()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [previewLogo, setPreviewLogo] = useState<string | null>(null)

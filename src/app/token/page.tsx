@@ -609,17 +609,8 @@ export default function TokenPage() {
       </main>
 
       {/* Footer */}
-      <footer className="relative border-t border-emerald-500/20 backdrop-blur-sm bg-black/40 mt-10">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col items-center justify-center space-y-4 text-sm">
-            <p className="text-gray-400 font-mono text-xs text-center">copyright © 2024 Bullrhun. All rights reserved. Not financial service</p>
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-emerald-400 font-bold tracking-wide text-center">24/7 Bull<em>Rhun</em></span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <BottomNav activeTab="token" />
+        <SharedFooter />
     </div>
   )
 }

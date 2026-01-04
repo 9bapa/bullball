@@ -35,10 +35,10 @@ import { ArrowLeft, ArrowRight, Truck, Shield, CreditCard, Copy, Check, AlertCir
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { supabase, supabaseService } from '@/lib/supabase';
-import { useDynamicWallet } from '@/components/wallet/DynamicWalletProvider';
+import { useUserContext } from '@/context/userContext';
 
 export default function CheckoutPage() {
-  const { connected, publicKey } = useDynamicWallet();
+  const { connected, publicKey } = useUserContext();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);

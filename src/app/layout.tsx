@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import ClientDynamicProvider from '@/components/wallet/ClientDynamicProvider'
 import { Toaster } from "@/components/ui/sonner"
 import HydrationWrapper from '@/components/ui/hydration-wrapper'
+import { SolanaWalletProvider } from '@/components/wallet_solana/WalletProvider'
+import { UserProvider } from '@/context/userContext'
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -32,12 +34,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white font-sans`}>
-        <ClientDynamicProvider>
-          <HydrationWrapper>
-            {children}
-            <Toaster />
-          </HydrationWrapper>
-        </ClientDynamicProvider>
+          <SolanaWalletProvider>
+            <UserProvider>
+                <HydrationWrapper>
+                  {children}
+                  <Toaster />
+                </HydrationWrapper>
+              </UserProvider>
+          </SolanaWalletProvider>
       </body>
     </html>
   );

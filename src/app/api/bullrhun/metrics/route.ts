@@ -29,10 +29,19 @@ export async function GET() {
     ]);
 
     // Get recent activity
-    const [recentCycles, recentTrades, recentRewards] = await Promise.all([
+    const [recentCycles, recentTrades, recentRewards, recentBroadcasts] = await Promise.all([
       cycleRepo.findRecentCycles(5),
       tradeRepo.findRecentTrades(config.BULLRHUN_MINT || '', 10),
       rewardRepo.getRecentRewards(5),
+      // Get broadcasts with fallback
+      (async () => {
+        try {
+          return await broadcastRepo.getRecentBroadcasts(10);
+        } catch (error) {
+          console.warn('Broadcasts not available:', error);
+          return [];
+        }
+      })(),
     ]);
 
     // Get environment wallet addresses
@@ -133,15 +142,8 @@ export async function GET() {
         })),
       },
 
-      // Real-time broadcasts (with fallback)
-      broadcasts: (() => {
-        try {
-          return broadcastRepo.getRecentBroadcasts(10);
-        } catch (error) {
-          console.warn('Broadcasts not available:', error);
-          return [];
-        }
-      })(),
+      // Real-time broadcasts
+      broadcasts: recentBroadcasts,
 
       // Timestamp
       generatedAt: new Date().toISOString(),

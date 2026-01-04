@@ -8,8 +8,142 @@ export function SharedFooter() {
     <footer className="bg-gradient-to-br from-meme-darker via-meme-dark to-meme-darker border-t border-white/10 mt-16">
       <div className="container mx-auto px-4 py-12">
         
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
+        {/* Mobile Layout - Stacked */}
+        <div className="md:hidden space-y-8 mb-12">
+          
+          {/* Brand Section - Mobile */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-meme-purple to-meme-blue rounded-xl flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="BullRhun" 
+                  className="w-8 h-8 object-contain"
+                />
+              </div>
+              <h3 className="text-xl font-display font-bold text-meme-gradient">
+                Bull<span className="italic">Rhun</span>
+              </h3>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed px-4">
+              The ultimate destination for meme coin enthusiasts and crypto swag collectors worldwide.
+            </p>
+            
+            {/* Social Icons - Mobile */}
+            <div className="flex justify-center gap-4">
+              <a 
+                href="https://x.com/BullRhun" 
+                className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors group"
+              >
+                <Twitter className="w-6 h-6 text-gray-400 group-hover:text-white" />
+              </a>
+            </div>
+          </div>
+
+          {/* Quick Links - Mobile */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                <div className="w-6 h-1 bg-meme-purple rounded-full"></div>
+                Shop
+              </h4>
+              <div className="space-y-2">
+                <Link 
+                  href="/merch" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  Products
+                </Link>
+                <Link 
+                  href="/submit-design" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  Submit Design
+                </Link>
+                <Link 
+                  href="/become-vendor" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  Become Vendor
+                </Link>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                <div className="w-6 h-1 bg-meme-blue rounded-full"></div>
+                Resources
+              </h4>
+              <div className="space-y-2">
+                <Link 
+                  href="/token" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  Tokens
+                </Link>
+                <Link 
+                  href="/about" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  About Us
+                </Link>
+                <Link 
+                  href="https://x.com/bullrhun" 
+                  className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  Support
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Newsletter - Mobile */}
+          <div className="text-center space-y-4">
+            <h4 className="text-base font-bold text-white mb-3 flex items-center justify-center gap-2">
+              <div className="w-6 h-1 bg-meme-green rounded-full"></div>
+              Stay Connected
+            </h4>
+            <p className="text-sm text-gray-300 mb-4 px-4">
+              Follow us for the latest drops and exclusive content.
+            </p>
+            <div className="flex justify-center">
+              <a 
+                href="https://x.com/bullrhun" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-gradient-to-r from-meme-purple to-meme-blue rounded-xl hover:from-meme-purple-dark hover:to-meme-blue-dark transition-all text-white flex items-center gap-2"
+              >
+                <span className="text-sm font-medium">@bullrhun</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+
+          {/* Trust Badges - Mobile */}
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
+            <div className="flex items-center gap-2 text-gray-300 bg-white/5 px-3 py-2 rounded-lg">
+              <Shield className="w-4 h-4 text-green-400" />
+              <span>Secure</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-300 bg-white/5 px-3 py-2 rounded-lg">
+              <Zap className="w-4 h-4 text-blue-400" />
+              <span>Fast</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-300 bg-white/5 px-3 py-2 rounded-lg">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <span>Premium</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop/Tablet Layout - Grid */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           
           {/* Brand Section */}
           <div className="space-y-6">
@@ -48,14 +182,14 @@ export function SharedFooter() {
             </h4>
             <div className="space-y-3">
               <Link 
-                href="/products" 
+                href="/merch" 
                 className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group"
               >
                 <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 All Products
               </Link>
               <Link 
-                href="/designs" 
+                href="/submit-design" 
                 className="text-gray-300 hover:text-meme-purple transition-colors flex items-center gap-2 group"
               >
                 <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -128,8 +262,8 @@ export function SharedFooter() {
         {/* Bottom Section */}
         <div className="border-t border-white/10 pt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-            {/* Trust Badges */}
-            <div className="flex flex-wrap gap-6 text-sm">
+            {/* Trust Badges - Desktop/Tablet */}
+            <div className="hidden md:flex flex-wrap gap-6 text-sm">
               <div className="flex items-center gap-2 text-gray-300">
                 <div className="w-6 h-6 bg-green-500/20 rounded-lg flex items-center justify-center">
                   <Shield className="w-4 h-4 text-green-400" />

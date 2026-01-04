@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, Home, Compass, User, Menu } from 'lucide-react'
+import { ShoppingCart, Home, Compass, User, Menu, PaintBucket } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
 
 interface BottomNavProps {
@@ -31,20 +31,20 @@ export function BottomNav({ activeTab }: BottomNavProps) {
       id: 'shop', 
       icon: ShoppingCart, 
       label: 'Shop', 
-      href: '/shop',
+      href: '/merch',
       badge: items.length > 0 ? items.length.toString() : null 
     },
     { 
-      id: 'profile', 
-      icon: User, 
-      label: 'Profile', 
-      href: '/profile',
+      id: 'design', 
+      icon: PaintBucket, 
+      label: 'Design', 
+      href: '/submit-design',
       badge: null 
     }
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 glass-header border-t border-white/10 z-50 mobile-safe-area md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-meme-dark border-t border-white/10 z-[60] mobile-safe-area md:hidden">
       <div className="grid grid-cols-4 gap-1">
         {navItems.map((item) => {
           const isActive = activeTab === item.id
@@ -85,7 +85,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ onMenuToggle, cartCount = 0 }: MobileHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 glass-header z-50">
+    <header className="fixed top-0 left-0 right-0 bg-meme-dark z-[60]">
       <div className="flex items-center justify-between p-4">
         {/* Hamburger Menu */}
         <button 
@@ -152,7 +152,7 @@ export function SlideMenu({ isOpen, onClose }: SlideMenuProps) {
 
   return (
     <div className={`
-      fixed inset-y-0 left-0 w-80 glass-header z-50 transform transition-transform duration-300 ease-out md:hidden
+      fixed inset-y-0 left-0 w-80 bg-meme-dark z-[60] transform transition-transform duration-300 ease-out md:hidden
       ${isOpen ? 'translate-x-0' : '-translate-x-full'}
     `}>
       <div className="p-6 h-full overflow-y-auto">

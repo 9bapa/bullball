@@ -9,7 +9,7 @@ import { SharedFooter } from '@/components/layout/shared-footer';
 import { TickerTape } from '@/components/ui/TickerTape';
 import { MemeCategories } from '@/components/ui/MemeCategories';
 import { useCartStore } from '@/store/cart';
-import { useDynamicWallet } from '@/components/wallet/DynamicWalletProvider';
+import { useUserContext } from '@/context/userContext';
 import { 
   Search,
   ShoppingCart,
@@ -21,11 +21,14 @@ import {
   Trophy,
   Target
 } from 'lucide-react';
+import {BottomNav} from '@/components/layout/mobile-nav'
 
 export default function MerchPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { items } = useCartStore();
-  const { connected, publicKey } = useDynamicWallet();
+  const { connected, publicKey } = useUserContext();
+    const [activeTab, setActiveTab] = useState('shop')
+
 
   const quickStats = [
     { label: 'Products', value: '500+', icon: Package, color: 'text-meme-purple' },
@@ -41,11 +44,12 @@ export default function MerchPage() {
       />
 
       {/* Main Products Section */}
-      <div className="container mx-auto px-4 py-8 mt-10">
+      <div className="container mx-auto px-4 py-8">
         <AllProductsSection />
       </div>
 
       {/* Shared Footer */}
+      <BottomNav activeTab={activeTab} />
       <SharedFooter />
     </div>
   );

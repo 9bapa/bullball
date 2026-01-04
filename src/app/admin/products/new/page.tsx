@@ -27,7 +27,7 @@ import { vendorService } from '@/services/vendor.service'
 import Link from 'next/link'
 import { SharedHeader } from '@/components/layout/shared-header'
 import { SharedFooter } from '@/components/layout/shared-footer'
-import { AdminProtectedRoute } from '@/components/wallet/WalletConnectButton'
+import { AdminProtectedRoute } from '@/components/wallet_solana/AdminGate'
 
 interface ProductFormData {
   name: string

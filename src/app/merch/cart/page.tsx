@@ -90,7 +90,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 mb-10">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 mb-10 md:mb-0 pb-20 md:pb-0">
       <SharedHeader />
       <div className="flex-grow mt-10">
         <div className="container mx-auto px-4 py-8 mt-10">
@@ -118,122 +118,126 @@ export default function CartPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-4">
-              {items.map((item) => {
-                const unitPrice = item.product.base_price + (item.variant?.price_adjustment || 0);
-                const totalPrice = unitPrice * item.quantity;
-                const isUpdating = updatingItems.has(item.id);
-                
-                return (
-                  <Card key={item.id} className="bg-slate-800/50 border-slate-700">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row gap-4">
-                        {/* Product Image */}
-                        <div className="w-24 h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center group relative">
-                          {item.product.image_url ? (
-                            <>
-                              <img 
-                                src={item.product.image_url} 
-                                alt={item.product.name}
-                                className="w-full h-full object-cover rounded-lg border-2 border-slate-600 hover:border-purple-400 transition-colors duration-200 cursor-pointer"
-                                onClick={() => setModalImage(item.product.image_url || null)}
-                              />
-                              {/* Expand Icon */}
-                              <button
-                                onClick={() => setModalImage(item.product.image_url || null)}
-                                className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                title="Click to enlarge image"
+            <div className="lg:col-span-2">
+              {/* Mobile 2-Column Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {items.map((item) => {
+                  const unitPrice = item.product.base_price + (item.variant?.price_adjustment || 0);
+                  const totalPrice = unitPrice * item.quantity;
+                  const isUpdating = updatingItems.has(item.id);
+                  
+                  return (
+                    <Card key={item.id} className="bg-slate-800/50 border-slate-700 overflow-hidden group hover:border-purple-400/50 transition-all duration-300">
+                      <CardContent className="p-4">
+                        {/* Product Image - Larger on mobile */}
+                        <div className="w-full h-48 bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center group relative mb-4">
+                            {item.product.image_url ? (
+                              <>
+                                <img 
+                                  src={item.product.image_url} 
+                                  alt={item.product.name}
+                                  className="w-full h-full object-cover rounded-lg border-2 border-slate-600 hover:border-purple-400 transition-colors duration-200 cursor-pointer"
+                                  onClick={() => setModalImage(item.product.image_url || null)}
+                                />
+                                {/* Expand Icon */}
+                                <button
+                                  onClick={() => setModalImage(item.product.image_url || null)}
+                                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  title="Click to enlarge image"
+                                >
+                                  <Maximize2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <ShoppingCart className="w-12 h-12 text-gray-500" />
+                            )}
+                          </div>
+
+                          {/* Product Details */}
+                          <div className="space-y-2">
+                            <div>
+                              <h3 className="text-white font-semibold text-base line-clamp-2">{item.product.name}</h3>
+                              <p className="text-gray-400 text-xs">
+                                {item.variant?.color && `${item.variant.color} `}
+                                {item.variant?.size && `Size ${item.variant.size}`}
+                                {!item.variant?.color && !item.variant?.size && 'Standard'}
+                              </p>
+                              <p className="text-gray-500 text-xs">SKU: {item.variant?.sku || 'N/A'}</p>
+                            </div>
+
+                            {/* Stock Status */}
+                            {(item.variant?.stock_quantity || 0) <= 5 && (
+                              <Badge className="text-xs bg-orange-500/20 text-orange-400 border-orange-500/30">
+                                Only {item.variant?.stock_quantity || 0} left
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Price and Quantity Controls */}
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-gray-400 text-xs line-through">
+                                  {formatPrice(item.product.base_price)}
+                                </p>
+                                <p className="text-purple-400 font-bold text-base">
+                                  {formatPrice(unitPrice)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-white font-bold text-lg">
+                                  {formatPrice(totalPrice)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center space-x-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuantityUpdate(item.id, item.quantity - 1)}
+                                  disabled={item.quantity <= 1 || isUpdating}
+                                  className="border-slate-600 text-gray-300 hover:text-white h-8 w-8 p-0"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </Button>
+                                
+                                <span className="text-white font-medium w-8 text-center text-sm">
+                                  {isUpdating ? '...' : item.quantity}
+                                </span>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuantityUpdate(item.id, item.quantity + 1)}
+                                  disabled={isUpdating}
+                                  className="border-slate-600 text-gray-300 hover:text-white h-8 w-8 p-0"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              </div>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveItem(item.id)}
+                                className="border-red-600/50 text-red-400 hover:text-red-300 hover:border-red-600 h-8 w-8 p-0"
                               >
-                                <Maximize2 className="w-3 h-3" />
-                              </button>
-                            </>
-                          ) : (
-                            <ShoppingCart className="w-8 h-8 text-gray-500" />
-                          )}
-                        </div>
-
-                        {/* Product Details */}
-                        <div className="flex-1 space-y-2">
-                          <div>
-                            <h3 className="text-white font-semibold text-lg">{item.product.name}</h3>
-                            <p className="text-gray-400 text-sm">
-                              {item.variant?.color && `${item.variant.color} `}
-                              {item.variant?.size && `Size ${item.variant.size}`}
-                              {!item.variant?.color && !item.variant?.size && 'Standard'}
-                            </p>
-                            <p className="text-gray-500 text-sm">SKU: {item.variant?.sku || 'N/A'}</p>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
-
-                          {/* Stock Status */}
-                          {(item.variant?.stock_quantity || 0) <= 5 && (
-                            <Badge className="text-xs bg-orange-500/20 text-orange-400 border-orange-500/30">
-                              Only {item.variant?.stock_quantity || 0} left
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Price and Quantity */}
-                        <div className="flex flex-col items-end space-y-4">
-                          <div className="text-right">
-                            <p className="text-gray-400 text-sm line-through">
-                              {formatPrice(item.product.base_price)}
-                            </p>
-                            <p className="text-purple-400 font-bold text-lg">
-                              {formatPrice(unitPrice)}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuantityUpdate(item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1 || isUpdating}
-                              className="border-slate-600 text-gray-300 hover:text-white"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </Button>
-                            
-                            <span className="text-white font-medium w-8 text-center">
-                              {isUpdating ? '...' : item.quantity}
-                            </span>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuantityUpdate(item.id, item.quantity + 1)}
-                              disabled={isUpdating}
-                              className="border-slate-600 text-gray-300 hover:text-white"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="border-red-600/50 text-red-400 hover:text-red-300 hover:border-red-600 ml-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-
-                          <div className="text-right">
-                            <p className="text-white font-bold text-lg">
-                              {formatPrice(totalPrice)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        </CardContent>
+                      </Card>
                 );
               })}
+              </div>
 
               {/* Cart Actions */}
-              <div className="flex justify-between items-center pt-4">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-700">
                 <Link href="/merch">
-                  <Button variant="outline" className="border-slate-600 text-gray-300 hover:text-white">
+                  <Button variant="outline" className="border-slate-600 text-gray-300 hover:text-white w-full sm:w-auto">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Continue Shopping
                   </Button>
@@ -242,7 +246,7 @@ export default function CartPage() {
                 <Button
                   variant="outline"
                   onClick={handleClearCart}
-                  className="border-red-600/50 text-red-400 hover:text-red-300 hover:border-red-600"
+                  className="border-red-600/50 text-red-400 hover:text-red-300 hover:border-red-600 w-full sm:w-auto"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear Cart

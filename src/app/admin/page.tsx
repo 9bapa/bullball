@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SharedHeader } from '@/components/layout/shared-header'
 import { SharedFooter } from '@/components/layout/shared-footer'
-import { AdminProtectedRoute } from '@/components/wallet/WalletConnectButton'
+import { AdminProtectedRoute } from '@/components/wallet_solana/AdminGate'
 
 // State interfaces
 interface Vendor {

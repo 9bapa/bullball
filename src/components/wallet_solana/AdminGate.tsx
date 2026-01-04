@@ -1,13 +1,14 @@
 'use client'
 
 import React from 'react'
-import { DynamicWalletButton, useDynamicWallet } from './DynamicWalletProvider'
+import { useUserContext } from '@/context/userContext'
+import { WalletIcon } from '@/components/wallet_solana/WalletIcon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, Wallet, User } from 'lucide-react'
 
 export function WalletConnectButton() {
-  const { connected, user, publicKey, isAdmin } = useDynamicWallet()
+  const { connected, user, publicKey, isAdmin } = useUserContext()
 
   if (connected) {
     return (
@@ -31,20 +32,20 @@ export function WalletConnectButton() {
             {publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'No Wallet'}
           </span>
         </div>
-        <DynamicWalletButton />
+        <WalletIcon />
       </div>
     )
   }
 
   return (
     <div className="flex items-center gap-2">
-      <DynamicWalletButton />
+      <WalletIcon />
     </div>
   )
 }
 
 export function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { connected, isAdmin, publicKey } = useDynamicWallet()
+  const { connected, isAdmin, publicKey } = useUserContext()
   console.log('🔄 AdminProtectedRoute state:', { connected, isAdmin, publicKey })
   if (!connected) {
     return (
