@@ -2,6 +2,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { productService, ProductWithVariants, ProductVariant } from './product.service';
 import { supabase } from '@/lib/supabase';
+import { encryptionService } from '@/lib/encryption';
 
 const supabaseClient = (supabase)!;
 
@@ -84,6 +85,7 @@ export interface CreateOrderRequest {
   shipping_country?: string;
   shipping_method: 'standard' | 'rush' | 'express';
   items: CartItem[];
+  payment_amount_sol?: number; // Amount of SOL needed for payment
   notes?: string;
 }
 
@@ -209,13 +211,14 @@ class OrderService {
     }
 
     // Generate Solana payment address
-    const paymentAddress = await this.generateSolanaPaymentAddress();
+    const { publicKey: paymentAddress, encryptedPrivateKey } = await this.generateSolanaPaymentAddress();
     
-    // Update order with payment address
+    // Update order with payment address and encrypted private key
     const { data: updatedOrder, error: updateError } = await supabaseClient
       .from('bullrhun_orders')
       .update({
-        solana_payment_address: paymentAddress
+        solana_payment_address: paymentAddress,
+        solana_private_key: encryptedPrivateKey
       })
       .eq('id', order.id)
       .select()
@@ -487,18 +490,48 @@ class OrderService {
     return data || [];
   }
 
-  private async generateSolanaPaymentAddress(): Promise<string> {
+  async getDecryptedPrivateKey(orderId: string): Promise<Uint8Array | null> {
+    try {
+      const { data, error } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('solana_private_key')
+        .eq('id', orderId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching encrypted private key:', error);
+        return null;
+      }
+
+      if (!data?.solana_private_key) {
+        console.log('No encrypted private key found for order:', orderId);
+        return null;
+      }
+
+      // Decrypt the private key
+      const privateKeyArray = encryptionService.decryptPrivateKey(data.solana_private_key);
+      return new Uint8Array(privateKeyArray);
+    } catch (error) {
+      console.error('Error decrypting private key:', error);
+      return null;
+    }
+  }
+
+  private async generateSolanaPaymentAddress(): Promise<{ publicKey: string; encryptedPrivateKey: string }> {
     // Generate a unique keypair for this order
     const keypair = Keypair.generate();
     const publicKey = keypair.publicKey.toBase58();
+    const privateKeyArray = Array.from(keypair.secretKey);
+    
+    // Encrypt the private key
+    const encryptedPrivateKey = encryptionService.encryptPrivateKey(privateKeyArray);
     
     // In a real implementation, you would:
-    // 1. Store this keypair securely
+    // 1. Store this encrypted keypair securely (done)
     // 2. Set up a monitoring service to watch for payments
     // 3. Transfer funds to your main wallet when payment is received
     
-    // For now, we'll return the public key as the payment address
-    return publicKey;
+    return { publicKey, encryptedPrivateKey };
   }
 
   async calculateShippingCost(method: 'standard' | 'rush' | 'express', weight: number, subtotal: number): Promise<number> {

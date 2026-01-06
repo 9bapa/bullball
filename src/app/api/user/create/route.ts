@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUser } = await supabaseService
       .from('bullrhun_users')
       .select('id, username, role, avatar_url')
-      .eq('wallet_address', wallet_address)
+      .eq('wallet_address', wallet_address.toLowerCase())
       .single()
 
     if (existingUser) {
@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
       .insert({
         wallet_address,
         role: 'customer',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
-      .select('id, username, role, avatar_url')
+      .select('id, username, role, avatar_url, created_at, updated_at')
       .single()
 
     if (error) {

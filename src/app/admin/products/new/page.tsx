@@ -110,9 +110,9 @@ export default function AddProductPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors({ ...errors, image_url: 'Image size must be less than 5MB' })
+    // Check file size (max 15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      setErrors({ ...errors, image_url: 'Image size must be less than 15MB' })
       return
     }
 

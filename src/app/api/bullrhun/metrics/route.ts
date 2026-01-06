@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { MetricsRepository, CycleRepository, TradeRepository, RewardRepository, LiquidityRepository, ListenerRepository, BroadcastRepository } from '@/repositories';
 import { getCronManager } from '@/services/cron.service';
 import { config } from '@/config';
-import { getBalance } from '@/lib/solana';
+import { getBalance, getConnection } from '@/lib/solana';
+import { PublicKey } from '@solana/web3.js';
 
 const metricsRepo = new MetricsRepository();
 const cycleRepo = new CycleRepository();
@@ -13,19 +14,51 @@ const listenerRepo = new ListenerRepository();
 const broadcastRepo = new BroadcastRepository();
 const cronManager = getCronManager();
 
+// Function to get dev wallet token balance
+async function getDevWalletTokenBalance(): Promise<number> {
+  try {
+    if (!config.WALLET_DEV || !config.BULLRHUN_MINT) {
+      return 0;
+    }
+
+    const connection = getConnection();
+    const devTokenAccounts = await connection.getTokenAccountsByOwner(
+      new PublicKey(config.WALLET_DEV),
+      { mint: new PublicKey(config.BULLRHUN_MINT) }
+    );
+
+    return devTokenAccounts.value?.reduce((total, account) => {
+      // Extract token amount from account data with type assertion
+      const accountData = account.account?.data as any;
+      if (!accountData) return total;
+      
+      const amount = accountData.parsed?.info?.tokenAmount?.amount ||
+                   accountData.parsed?.info?.amount ||
+                   accountData.amount ||
+                   0;
+      
+      return total + amount;
+    }, 0) || 0;
+  } catch (error) {
+    console.error('Error fetching dev wallet token balance:', error);
+    return 0;
+  }
+}
+
 export async function GET() {
   try {
     // Get basic metrics
     const baseMetrics = await metricsRepo.getMetrics();
     
     // Get detailed stats
-    const [cycleStats, tradeStats, rewardStats, liquidityStats, healthStatus, listenerStatus] = await Promise.all([
+    const [cycleStats, tradeStats, rewardStats, liquidityStats, healthStatus, listenerStatus, devTokenBalance] = await Promise.all([
       cycleRepo.getCycleStats(),
       tradeRepo.getTradeStats(),
       rewardRepo.getRewardsStats(),
       liquidityRepo.getLiquidityStats(),
       metricsRepo.getHealthStatus(),
       listenerRepo.getListener(),
+      getDevWalletTokenBalance(),
     ]);
 
     // Get recent activity
@@ -104,6 +137,7 @@ export async function GET() {
           address: config.WALLET_DEV,
           rewardAddress: config.WALLET_REWARD,
           rewardBalance: rewardBalance,
+          tokenBalance: devTokenBalance,
         },
 
       // Trade goal information

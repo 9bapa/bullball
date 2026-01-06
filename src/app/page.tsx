@@ -41,6 +41,7 @@ export default function StoreFront() {
   const [isSubmitDesignOpen, setIsSubmitDesignOpen] = useState(false)
   const [isBecomeVendorOpen, setIsBecomeVendorOpen] = useState(false)
   const [tradeGameData, setTradeGameData] = useState<any>(null)
+  const [walletBalanceData, setWalletBalanceData] = useState<any>(null)
   const { connected, publicKey } = useUserContext()
 
     // Add ref to prevent multiple API calls
@@ -56,6 +57,7 @@ export default function StoreFront() {
       try {
         const response = await fetch('/api/bullrhun/metrics')
         const apiData = await response.json()
+        console.log(apiData)
         setTradeGameData(apiData)
       } catch (error) {
         console.error('Failed to fetch trade game data:', error)
@@ -63,6 +65,20 @@ export default function StoreFront() {
     }
     
     fetchTradeData()
+    
+    // Fetch wallet balance data separately
+    const fetchWalletData = async () => {
+      try {
+        const response = await fetch('/api/bullrhun/wallet-balance')
+        const walletData = await response.json()
+        console.log(walletData)
+        setWalletBalanceData(walletData)
+      } catch (error) {
+        console.error('Failed to fetch wallet balance data:', error)
+      }
+    }
+    
+    fetchWalletData()
   }, [isLoaded])
 
   useEffect(() => {
@@ -317,7 +333,7 @@ export default function StoreFront() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-2">Current Pot</h3>
                   <div className="text-3xl font-black font-mono text-yellow-400 mb-1">
-                    {tradeGameData?.dev_wallet?.rewardBalance ? (tradeGameData.dev_wallet.rewardBalance / 1000000000).toFixed(1) : '0.0'}
+                    {walletBalanceData?.reward_wallet?.solBalance ? (walletBalanceData.reward_wallet.solBalance/1000000000).toFixed(3) : '0.0'}
                   </div>
                   <div className="text-sm text-gray-400">SOL Prize Pool</div>
                   <div className="mt-4 pt-4 border-t border-white/10">
@@ -412,20 +428,20 @@ export default function StoreFront() {
                       <div className="text-center p-4 bg-black/30 rounded-lg">
                         <div className="text-xs text-gray-400 mb-1">BULLRHUN Balance</div>
                         <div className="text-lg font-mono text-meme-purple font-bold">
-                          {tradeGameData?.dev_wallet?.tokenBalance ? (tradeGameData.dev_wallet.tokenBalance / 1000000000).toFixed(2) : '0.00'}
+                          {walletBalanceData?.reward_wallet?.tokenBalance ? (walletBalanceData.reward_wallet.tokenBalance / 1000000000).toFixed(2) : '0.00'}
                         </div>
                         <div className="text-xs text-gray-400">
-                          Address: <span className="font-mono">{publicKey ? `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}` : 'Not Connected'}</span>
+                          Reward Address: <span className="font-mono">{walletBalanceData?.reward_wallet?.address ? `${walletBalanceData.reward_wallet.address.slice(0, 6)}...${walletBalanceData.reward_wallet.address.slice(-4)}` : 'Loading...'}</span>
                         </div>
                       </div>
                       
                       <div className="text-center p-4 bg-black/30 rounded-lg">
                         <div className="text-xs text-gray-400 mb-1">SOL Balance</div>
                         <div className="text-lg font-mono text-blue-300 font-bold">
-                          {tradeGameData?.dev_wallet?.solBalance ? (tradeGameData.dev_wallet.solBalance / 1000000000).toFixed(3) : '0.000'} SOL
+                          {walletBalanceData?.reward_wallet?.solBalance ? (walletBalanceData.reward_wallet.solBalance/1000000000).toFixed(3) : '0.000'} SOL
                         </div>
                         <div className="text-xs text-gray-400">
-                          Address: <span className="font-mono">{publicKey ? `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}` : 'Not Connected'}</span>
+                          Your Address: <span className="font-mono">{publicKey ? `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}` : 'Not Connected'}</span>
                         </div>
                       </div>
                     </div>

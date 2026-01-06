@@ -105,6 +105,7 @@ export interface BullrhunMetrics {
   current_sol_price: number;
   last_cycle_at: string | null;
   updated_at: string;
+  last_fee_amount: number; // Track last fee amount for dust tracking
   // Enhanced metrics for 11-step flow
   total_tokens_bought: number;
   total_gifts_sent: number;

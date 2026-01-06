@@ -7,7 +7,7 @@ interface User {
   id?: string
   username: string
   avatar_url: string
-  role: 'user' | 'admin' | 'super_admin'
+  role: 'customer' | 'admin' | 'super_admin'
   created_at?: string
   updated_at?: string
 }
@@ -65,7 +65,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         
         if (response.ok) {
           const userData = await response.json()
-          setDbUser(userData)
+          console.log('Fetched user data:', userData)
+          console.log('User role from API:', userData.user?.role)
+          setDbUser(userData.user)
         } else {
           console.error('Failed to fetch user data:', response.statusText)
         }
@@ -82,7 +84,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const user: User | null = dbUser ? {
     username: dbUser.username || 'none set',
     avatar_url: dbUser.avatar_url || '/avatar.jpg',
-    role: dbUser.role || 'user',
+    role: dbUser.role,
   } : null
   
   const contextValue: UserContextType = {

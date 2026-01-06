@@ -252,36 +252,5 @@ export class ListenerRepository extends BaseRepository<BullrhunListener> {
     }
   }
 
-  async updateMinimumTradeAmount(newAmount: number): Promise<void> {
-    const updateData: Partial<BullrhunListener> = {
-      minimum_trade_amount: newAmount,
-      updated_at: new Date().toISOString(),
-    };
 
-    const { error } = await supabase
-      .from(this.tableName)
-      .update(updateData)
-      .eq('id', 1);
-
-    if (error) {
-      this.handleDatabaseError(error, 'updateMinimumTradeAmount');
-    }
-  }
-
-  async updateLastWinner(winnerAddress: string): Promise<void> {
-    const updateData: Partial<BullrhunListener> = {
-      last_winner_address: winnerAddress,
-      last_winner_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from(this.tableName)
-      .update(updateData)
-      .eq('id', 1);
-
-    if (error) {
-      this.handleDatabaseError(error, 'updateLastWinner');
-    }
-  }
 }

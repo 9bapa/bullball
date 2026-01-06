@@ -23,7 +23,9 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
       total_tokens_bought: 0,
       total_gifts_sent: 0,
       total_sol_spent: 0,
+      last_fee_amount: 0,
     };
+
   }
 
   async updateMetrics(data: Partial<BullrhunMetrics>): Promise<BullrhunMetrics> {
@@ -45,9 +47,18 @@ export class MetricsRepository extends BaseRepository<BullrhunMetrics> {
 
   async incrementFeesCollected(amount: number): Promise<BullrhunMetrics> {
     const current = await this.getMetrics();
-    return this.updateMetrics({
-      total_fees_collected: current.total_fees_collected + amount,
-    });
+    
+    // Only update fees if this is a new amount (different from last recorded balance)
+    // This prevents double-counting the same fee amount multiple times
+    if (current.last_fee_amount !== amount) {
+      return this.updateMetrics({
+        total_fees_collected: current.total_fees_collected + amount,
+        last_fee_amount: amount, // Track the new fee amount
+      });
+    }
+    
+    // If same amount as last recorded, don't update (avoid double counting)
+    return current;
   }
 
   async incrementTrades(): Promise<BullrhunMetrics> {

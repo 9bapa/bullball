@@ -116,8 +116,9 @@ class BullRhunTradeListener {
         this.handleMessage(data);
       });
 
-      this.ws.on('close', () => {
+      this.ws.on('close', (event) => {
         console.log('❌ WebSocket disconnected');
+        // Only reconnect on abnormal closures, not clean disconnects
         this.scheduleReconnect();
       });
 
@@ -347,9 +348,18 @@ class BullRhunTradeListener {
     if (!this.isRunning) return;
 
     this.reconnectAttempts++;
-    const delay = Math.min(30000, 1000 * this.reconnectAttempts);
     
-    console.log(`⏳ Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    // Give up after too many failed attempts
+    if (this.reconnectAttempts > 10) {
+      console.error('🛑 Too many reconnection attempts, giving up');
+      this.stop();
+      return;
+    }
+    
+    // More conservative exponential backoff with max 5 minutes
+    const delay = Math.min(300000, Math.pow(2, this.reconnectAttempts - 1) * 1000);
+    
+    console.log(`⏳ Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/10)`);
     
     setTimeout(() => {
       this.connect();

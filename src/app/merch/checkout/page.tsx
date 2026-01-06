@@ -6,21 +6,7 @@ import { SharedFooter } from '@/components/layout/shared-footer'
 import { cryptoService } from '@/services/crypto.service'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Simple QR Code Generator
-const generateQRCode = (text: string): string => {
-  const size = 8;
-  const margin = 2;
-  
-  // Simple QR code placeholder - in production use a proper QR library
-  const qrData = `solana:${text}`;
-  return `data:image/svg+xml;base64,${btoa(`
-    <svg width="${size * 10}" height="${size * 10}" viewBox="0 0 ${size * 10} ${size * 10}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${size * 10}" height="${size * 10}" fill="white"/>
-      <rect x="${margin * 10}" y="${margin * 10}" width="${(size - margin * 2) * 10}" height="${(size - margin * 2) * 10}" fill="black"/>
-      <text x="${size * 5}" y="${size * 5 + 3}" text-anchor="middle" fill="white" font-size="2" font-family="monospace">SOL</text>
-    </svg>
-  `)}`;
-};
+import QRCode from 'qrcode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,10 +36,10 @@ export default function CheckoutPage() {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [solConversion, setSolConversion] = useState<any>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   const { items, getTotalItems, getSubtotal, getTotalWeight, clearCart } = useCartStore();
   const router = useRouter();
-
   const [formData, setFormData] = useState({
     // Customer Info
     customer_name: '',
@@ -70,6 +56,8 @@ export default function CheckoutPage() {
     // Order Notes
     notes: ''
   });
+
+
 
   // Load existing user data on component mount
   useEffect(() => {
@@ -232,18 +220,34 @@ export default function CheckoutPage() {
     if (step === 3 && order && !paymentConfirmed) {
       const interval = setInterval(async () => {
         try {
-          const updatedOrder = await orderService.getOrderById(order.order.id);
-          if (updatedOrder.status === 'paid') {
-            setPaymentConfirmed(true);
-            toast.success('Payment confirmed! 🎉');
-            // Clear cart and redirect to success page
-            setTimeout(() => {
-              clearCart();
-              router.push('/merch/success');
-            }, 2000);
+          const response = await fetch('/api/orders/payment-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderId: order.order.id
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.order && result.order.status === 'paid') {
+              setPaymentConfirmed(true);
+              toast.success('Payment confirmed! 🎉');
+              // Clear cart and redirect to success page
+              setTimeout(() => {
+                clearCart();
+                router.push('/merch/success');
+              }, 2000);
+            }
+          } else {
+            console.log('Payment status check returned non-OK status:', response.status);
           }
         } catch (error) {
           console.error('Error checking payment status:', error);
+          // Don't show error to user, just continue checking
+          // Order might still be processing or API might be temporarily unavailable
         }
       }, 5000); // Check every 5 seconds
       return () => clearInterval(interval);
@@ -466,6 +470,12 @@ export default function CheckoutPage() {
         order = existingPendingOrder;
         toast.info('Using your existing pending order');
       } else {
+        // Calculate SOL amount needed
+        let paymentAmountSol = 0;
+        if (solConversion) {
+          paymentAmountSol = solConversion.solAmount;
+        }
+
         // Create new order
         const orderData: CreateOrderRequest = {
           customer_wallet_address: walletAddress, // Link order to user wallet
@@ -483,6 +493,7 @@ export default function CheckoutPage() {
           shipping_country: formData.shipping_country,
           shipping_method: 'standard', // Default shipping for Web3
           items: items,
+          payment_amount_sol: paymentAmountSol, // Include SOL amount
           notes: formData.notes
         };
 
@@ -513,13 +524,45 @@ export default function CheckoutPage() {
       setSolConversion(conversion);
       
       // Set payment address
-      setPaymentAddress(order.solana_payment_address || '11111111111111111111111111111111111112');
+      const address = order.solana_payment_address || '11111111111111111111111111111111111112';
+      setPaymentAddress(address);
       setAmountSol(conversion.solAmount);
+      
+      // Generate QR code for payment address
+      generateQRCode(address).then(qrDataUrl => {
+        setQrCodeUrl(qrDataUrl);
+      }).catch(error => {
+        console.error('Error generating QR code:', error);
+      });
+      
+      // Redirect to new URL with order_id
+      if (!existingPendingOrder) {
+        router.push(`/merch/checkout/${order.id}`);
+      }
     } catch (error: any) {
       console.error('Error creating order:', error);
       toast.error(error.message || 'Failed to create order');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQRCode = async (text: string): Promise<string> => {
+    try {
+      // Generate QR code for Solana payment
+      const solanaUrl = `solana:${text}`;
+      return await QRCode.toDataURL(solanaUrl, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      // Fallback to simple placeholder
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDI1NiAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSJ3aGl0ZSIvPgo8cmVjdCB4PSI0OCIgeT0iNDgiIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIiBmaWxsPSJibGFjayIvPgo8dGV4dCB4PSIxMjgiIHk9IjE0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiPlNPTDwvdGV4dD4KPC9zdmc+';
     }
   };
 
@@ -802,11 +845,11 @@ export default function CheckoutPage() {
                       </div>
                       
                       {/* QR Code */}
-                      {paymentAddress && (
+                      {qrCodeUrl && (
                         <div className="flex justify-center mt-4 mb-4">
                           <div className="bg-white p-4 rounded-lg">
                             <img 
-                              src={generateQRCode(paymentAddress)} 
+                              src={qrCodeUrl} 
                               alt="Payment QR Code"
                               className="w-32 h-32"
                             />

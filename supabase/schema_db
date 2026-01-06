@@ -727,7 +727,9 @@ CREATE TABLE public.bullrhun_metrics (
     updated_at timestamp with time zone DEFAULT now(),
     total_tokens_bought bigint DEFAULT 0,
     total_gifts_sent bigint DEFAULT 0,
-    total_sol_spent numeric(20,8) DEFAULT 0
+    total_sol_spent numeric(20,8) DEFAULT 0,
+    last_wallet_balance numeric(38,9) DEFAULT 0
+    last_fee_amount numeric(38,9) DEFAULT 0
 );
 
 

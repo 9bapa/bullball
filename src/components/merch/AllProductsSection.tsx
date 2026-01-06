@@ -17,7 +17,9 @@ export function AllProductsSection() {
     const fetchProducts = async () => {
       try {
         const data = await productService.getAllProducts()
-        setProducts(data)
+        // Shuffle products for random display
+        const shuffledProducts = [...data].sort(() => Math.random() - 0.5)
+        setProducts(shuffledProducts)
         
         // Set default selected variants
         const defaultVariants: Record<string, string> = {}

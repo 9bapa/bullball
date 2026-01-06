@@ -11,11 +11,14 @@ import { useCartStore } from '@/store/cart';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, ArrowRight, X, Maximize2 } from 'lucide-react';
 import Link from 'next/link';
+import { useUserContext } from '@/context/userContext';
+import { toast } from 'sonner';
 
 export default function CartPage() {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [modalImage, setModalImage] = useState<string | null>(null);
   const { items, getTotalItems, getSubtotal, removeItem, updateQuantity, clearCart } = useCartStore();
+  const { connected, publicKey } = useUserContext();
   const router = useRouter();
 
   const handleQuantityUpdate = async (itemId: string, newQuantity: number) => {
@@ -42,6 +45,52 @@ export default function CartPage() {
   const handleClearCart = () => {
     if (window.confirm('Are you sure you want to clear your entire cart?')) {
       clearCart();
+    }
+  };
+
+  const handleCheckout = async () => {
+    // Check if wallet is connected
+    if (!connected) {
+      toast.error('Please connect your wallet to continue');
+      router.push('/merch');
+      return;
+    }
+
+    try {
+      // Get current wallet address
+      const walletAddress = publicKey?.toString() || 'anonymous';
+      
+      // Check for existing pending orders
+      const response = await fetch('/api/orders/by-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_wallet_address: walletAddress,
+          status: 'pending'
+        }),
+      });
+
+      let existingPendingOrder: any = null;
+      if (response.ok) {
+        const ordersData = await response.json();
+        if (ordersData.orders && ordersData.orders.length > 0) {
+          // Use most recent pending order
+          existingPendingOrder = ordersData.orders[0];
+        }
+      }
+
+      // Navigate to checkout with order ID if exists, or to regular checkout
+      if (existingPendingOrder) {
+        router.push(`/merch/checkout/${existingPendingOrder.id}`);
+      } else {
+        router.push('/merch/checkout');
+      }
+    } catch (error) {
+      console.error('Error checking for existing orders:', error);
+      // If error, just go to regular checkout
+      router.push('/merch/checkout');
     }
   };
 
@@ -301,7 +350,7 @@ export default function CartPage() {
                   </div>
 
 {/* Market Cap Info */}
-                  <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-lg p-4 mb-4">
+                  {/* <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-lg p-4 mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-sm font-semibold text-purple-400">Market Cap Milestone</h4>
                       <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
@@ -319,14 +368,15 @@ export default function CartPage() {
                     <p className="text-xs text-gray-400 text-center mt-3">
                       When $BULL token reaches $1M market cap, exclusive merch drops and special offers will be unlocked for holders
                     </p>
-                  </div>
+                  </div> */}
                   {/* Checkout Button */}
-                  {/* <Link href="/merch/checkout">
-                    <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
-                      Proceed to Checkout
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link> */}
+                  <Button 
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    onClick={handleCheckout}
+                  >
+                    Proceed to Checkout
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 </CardContent>
               </Card>
             </div>

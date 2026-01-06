@@ -54,6 +54,7 @@ export default function TokenPage() {
   const [isScrollingUp, setIsScrollingUp] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { items } = useCartStore()
+  const [walletData, setWalletData] = useState<any>(null)
 
   // Scroll handling for header visibility
   useEffect(() => {
@@ -81,12 +82,27 @@ export default function TokenPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/bullrhun/metrics')
-        const apiData = await response.json()
-        setData(apiData)
+        const [metricsResponse, balanceResponse] = await Promise.all([
+          fetch('/api/bullrhun/metrics'),
+          fetch('/api/bullrhun/wallet-balance')
+        ])
+        
+        const apiData = await metricsResponse.json()
+        const walletData = await balanceResponse.json()
+        setWalletData(walletData)
+        console.log(walletData)
+        // Combine data: use metrics for activities/goals, wallet balance for financial data
+        setData({
+          ...apiData,
+          overview: {
+            ...apiData.overview,
+            ...walletData
+          }
+        })
+
         setActivities(apiData.activities || [])
       } catch (error) {
-        console.error('Failed to fetch metrics:', error)
+        console.error('Failed to fetch data:', error)
       }
     }
 
@@ -135,6 +151,26 @@ export default function TokenPage() {
     
     return () => {
     }
+  }, [])
+
+  // Refresh trade data periodically to show current count
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch('/api/bullrhun/metrics')
+        const apiData = await response.json()
+        
+        setData(prevData => ({
+          ...prevData,
+          trade_goal: apiData.trade_goal,
+          listener: apiData.listener,
+        }))
+      } catch (error) {
+        console.error('Failed to refresh trade data:', error)
+      }
+    }, 10000) // Refresh every 10 seconds
+
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -369,7 +405,7 @@ export default function TokenPage() {
           <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/30 backdrop-blur-sm hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 group">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center justify-between text-purple-400">
-                <span className="text-xl font-bold tracking-wide">Tokens Bought</span>
+                <span className="text-xl font-bold tracking-wide">Tokens Balance</span>
                 <Zap className="w-6 h-6 group-hover:scale-110 transition-transform" />
               </CardTitle>
             </CardHeader>
@@ -377,10 +413,10 @@ export default function TokenPage() {
               <div className="space-y-4">
                 {data && data.overview && (
                 <p className="text-4xl font-black font-mono text-purple-300 tracking-tight">
-                  {formatNumber(data.overview.totalTokensBought)}
+                  {formatNumber(walletData?.dev_wallet?.tokenBalance || 0)}
                 </p>
                 )}
-                <p className="text-sm text-gray-400 font-medium">BULLBALL tokens</p>
+                <p className="text-sm text-gray-400 font-medium">BULLRHUN tokens</p>
                 <Separator className="bg-purple-500/20" />
                 <div className="flex items-center text-sm text-purple-400 font-semibold">
                   <Activity className="w-4 h-4 mr-2" />
@@ -458,7 +494,7 @@ export default function TokenPage() {
                 <div className="text-center p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
                   <p className="text-xs text-gray-400 font-medium mb-1">Gift Bag</p>
                   <p className="text-xl font-black font-mono text-green-300">
-                    {formatNumber(data?.dev_wallet?.rewardBalance || 0)} SOL
+                    {formatNumber(data?.reward_wallet?.tokenBalance || 0)} SOL
                   </p>
                   <p className="text-xs text-gray-500">wallet rewards</p>
                 </div>
@@ -577,35 +613,6 @@ export default function TokenPage() {
             </div>
           ))}
         </div>
-
-        <Card className="mb-12 bg-gradient-to-br from-purple-900/20 via-pink-900/10 to-orange-900/20 border-purple-700/30 backdrop-blur-sm">
-          <CardHeader className="text-center">
-              <div className="flex items-center justify-center mb-4">
-                <div className="flex items-center space-x-2 px-4 py-2 bg-indigo-500/20 rounded-full border border-indigo-400/30">
-                  <Target className="w-4 h-4 text-indigo-400" />
-                  <span className="text-sm font-semibold text-indigo-300">MEME COIN MERCH</span>
-                </div>
-              </div>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold text-white mb-4 flex items-center justify-between">
-                <span>🔥 All Products</span>
-                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                  <span>←</span>
-                  <span>Scroll for all products</span>
-                  <span>→</span>
-                </div>
-              </h3>
-            
-              <AllProductsSection />
-            </div>
-
-            <div className="text-center pt-6 border-t border-gray-700">
-              <CartButton />
-            </div>
-          </CardContent>
-        </Card>
       </main>
 
       {/* Footer */}
