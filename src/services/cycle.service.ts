@@ -108,8 +108,8 @@ export class CycleService {
       const transactionFees = 0.005;
       const availableForDistribution = balanceAmount - transactionFees;
       
-      const platformFee = availableForDistribution * 0.12; // 12% of AVAILABLE balance
-      const rewardFee = availableForDistribution * 0.10; // 10% of AVAILABLE balance
+      const platformFee = availableForDistribution * 0.25; // 12% of AVAILABLE balance
+      const rewardFee = availableForDistribution * 0.25; // 10% of AVAILABLE balance
       const tokenAmount = availableForDistribution - platformFee - rewardFee; // Remaining for tokens
       
       console.log(`💰 Fee Distribution from ${balanceAmount} SOL balance:`);
@@ -346,9 +346,9 @@ export class CycleService {
       }
     }
 
-    if (rewardFee > 0 && config.WALLET_REWARD) {
+    if (rewardFee > 0 && config.WALLET_PLATFORM) {
       try {
-        await transferSol(config.WALLET_REWARD!, rewardFee);
+        await transferSol(config.WALLET_PLATFORM!, rewardFee);
         console.log(`Reward fee of ${rewardFee} SOL transferred`);
       } catch (error) {
         console.error('Reward fee transfer failed:', error instanceof Error ? error.message : error);

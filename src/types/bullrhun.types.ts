@@ -248,6 +248,7 @@ export interface BullrhunConfig {
   BULLRHUN_MINT?: string;
   WALLET_PLATFORM?: string;
   WALLET_REWARD?: string;
+  WALLET_MARKETER?: string;
   REWARD_MODE: RewardMode;
   REWARD_SOL_AMOUNT?: number;
   PUMPSWAP_POOL?: string;

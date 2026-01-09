@@ -8,6 +8,7 @@ const supabaseClient = (supabase)!;
 
 export interface Order {
   id: string;
+  user_id: string;
   order_number: string;
   customer_name: string;
   customer_phone?: string;
@@ -571,6 +572,50 @@ class OrderService {
       // Fallback rate if API fails
       const fallbackRate = 150; // $150 per SOL
       return usdAmount / fallbackRate;
+    }
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    try {
+      const { data, error } = await supabaseClient
+        .from('bullrhun_orders')
+        .select(`
+          *,
+          bullrhun_order_items (
+            *,
+            bullrhun_products (
+              *,
+              bullrhun_vendors (
+                name,
+                business_name
+              )
+            ),
+            bullrhun_product_variants (*)
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100); // Limit to recent orders
+
+      if (error) {
+        console.error('Error fetching all orders:', error);
+        throw new Error(`Failed to fetch orders: ${error.message}`);
+      }
+
+      if (!data) {
+        return [];
+      }
+
+      return data.map((order: any) => ({
+        ...order,
+        items: order.bullrhun_order_items?.map((item: any) => ({
+          ...item,
+          product: item.bullrhun_products,
+          variant: item.bullrhun_product_variants
+        })) || []
+      }));
+    } catch (error) {
+      console.error('Error in getAllOrders:', error);
+      throw error;
     }
   }
 }
