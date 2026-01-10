@@ -158,7 +158,10 @@ export default function StoreFront() {
             <span className="text-white"><small>crypto, meme, trading merch store</small></span>
           </h1>
           <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Rock the latest meme-tech swag 
+            Rock the latest meme-tech swag
+          </p>
+          <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Do not buy BullRhun token, except for entertainment purposes ONLY!
           </p>
                     {/* Trading-Themed Divider */}
           <div className="relative mb-8 py-6">

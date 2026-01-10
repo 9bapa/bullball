@@ -40,8 +40,11 @@ export default function TermsOfService() {
               <p className="text-gray-300 mb-4 font-semibold text-red-400">
                 <strong>All purchases are non-refundable.</strong>
               </p>
-              <p className="text-gray-300">
+              <p className="text-gray-300 mb-4">
                 Once a purchase is made, no refunds will be issued under any circumstances. Please review your order carefully before completing your purchase.
+              </p>
+              <p className="text-gray-300 mb-4 font-semibold text-yellow-400">
+                <strong>Tokens are for entertainment purposes only.</strong> There is no promise of returns, profits, or value appreciation.
               </p>
             </section>
 

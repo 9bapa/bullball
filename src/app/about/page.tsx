@@ -42,6 +42,9 @@ export default function AboutPage() {
               <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">
                 The ultimate crypto, meme, trading merch & swag super store for the modern degenerate trader
               </p>
+              <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">
+                Do not buy the BullRhun token except for entertainment purposes. There is no promise of return. 
+              </p>
             </div>
             
             {/* Key Stats */}

@@ -300,7 +300,7 @@ export function SharedFooter() {
           
           {/* Copyright */}
           <div className="text-center text-sm text-gray-400">
-            <p>&copy; 2024 BullRhun. All rights reserved. | Built for the crypto community ❤️</p>
+            <p>&copy; 2024 BullRhun. All rights reserved. | Token is for entertainment purposes only.</p>
           </div>
         </div>
       </div>

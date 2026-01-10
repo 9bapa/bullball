@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner"
 import HydrationWrapper from '@/components/ui/hydration-wrapper'
@@ -21,6 +21,13 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk'
 });
 
+const pressStart = Press_Start_2P({ 
+  subsets: ["latin"],
+  weight: ['400'],
+  display: 'swap',
+  variable: '--font-press-start'
+});
+
 export const metadata: Metadata = {
   title: "BullRhun - Meme Coin Merch Store",
   description: "Rock the latest meme coin merch. From Doge to Pepe, Shiba to Floki - we've got your crypto swag covered!",
@@ -33,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white font-sans`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${pressStart.variable} antialiased min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white font-sans`}>
           <SolanaWalletProvider>
             <UserProvider>
                 <HydrationWrapper>
