@@ -24,16 +24,22 @@ interface FeaturedProductsSectionProps {
 }
 
 const filters: { id: ProductFilter; label: string; icon: string; color: string }[] = [
-  { id: 'all', label: 'ALL', icon: '⭐', color: 'from-purple-500 to-pink-500' },
-  { id: 'bullrun', label: 'BULLRUN', icon: '🚀', color: 'from-green-500 to-emerald-500' },
-  { id: 'btc', label: 'BTC', icon: '₿', color: 'from-orange-500 to-yellow-500' },
-  { id: 'eth', label: 'ETH', icon: 'Ξ', color: 'from-blue-500 to-cyan-500' },
-  { id: 'bnb', label: 'BNB', icon: '◈', color: 'from-yellow-500 to-amber-500' },
-  { id: 'solana', label: 'SOL', icon: '◎', color: 'from-purple-500 to-indigo-500' },
-  { id: 'sui', label: 'SUI', icon: '💎', color: 'from-pink-500 to-rose-500' },
+  { id: 0, label: 'ALL', icon: '⭐', color: 'from-purple-500 to-pink-500' },
+  { id: 1, label: 'BULLRUN', icon: '🚀', color: 'from-green-500 to-emerald-500' },
+  { id: 2, label: 'BTC', icon: '₿', color: 'from-orange-500 to-yellow-500' },
+  { id: 3, label: 'ETH', icon: 'Ξ', color: 'from-blue-500 to-cyan-500' },
+  { id: 4, label: 'BNB', icon: '◈', color: 'from-yellow-500 to-amber-500' },
+  { id: 5, label: 'SOL', icon: '◎', color: 'from-purple-500 to-indigo-500' },
+  { id: 6, label: 'SUI', icon: '💎', color: 'from-pink-500 to-rose-500' },
 ]
 
-export function FeaturedProductsSection({ selectedFilter, onFilterChange }: FeaturedProductsSectionProps) {
+interface FeaturedProductsSectionProps {
+  selectedFilter: ProductFilter
+  onFilterChange: (filter: ProductFilter) => void
+  isLoading?: boolean
+}
+
+export function FeaturedProductsSection({ selectedFilter, onFilterChange, isLoading = false }: FeaturedProductsSectionProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({})
@@ -44,11 +50,12 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setLoading(true)
         let data: Product[]
-        if (selectedFilter === 'all') {
+        if (selectedFilter === 0) {
           data = await productService.getAllProducts(true, false)
         } else {
-          data = await productService.getProductsByCategory(selectedFilter, true)
+          data = await productService.getProductsByCategory(filters[selectedFilter].id, true)
         }
         const shuffledProducts = [...data].sort(() => Math.random() - 0.5)
         setProducts(shuffledProducts)
@@ -60,6 +67,7 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
           }
         })
         setSelectedVariants(defaultVariants)
+
       } catch (error) {
         console.error('Error fetching products:', error)
       } finally {
@@ -166,12 +174,9 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
   }
 
   // Filter products based on selected filter
-  const filteredProducts = selectedFilter === 'all'
+  const filteredProducts = selectedFilter === 0 
     ? products
-    : products.filter(p => {
-        const category = p.category?.toLowerCase() || p.type?.toLowerCase() || ''
-        return category === selectedFilter.toLowerCase()
-      })
+    : products // Products are already filtered by the API call, no need to filter again
 
   if (loading) {
     return (
@@ -214,7 +219,7 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
     )
   }
 
-  if (filteredProducts.length === 0) {
+  if (filteredProducts.length === 0 && !loading && !isLoading) {
     return (
       <section className="py-8 md:py-12 relative">
         <div className="absolute inset-0 crypto-grid opacity-20 pointer-events-none" />
@@ -320,13 +325,13 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
                 </motion.div>
 
                 <CardTitle className="font-display text-3xl md:text-4xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent mb-4">
-                  {selectedFilter === 'all' ? 'Restocking Soon' : `${selectedFilter.toUpperCase()} Section Empty`}
+                  {selectedFilter === 0 ? 'Restocking Soon' : `${filters[selectedFilter].label} Section Empty`}
                 </CardTitle>
 
                 <CardDescription className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                  {selectedFilter === 'all' 
+                  {selectedFilter === 0 
                     ? "We're currently updating our inventory with fresh crypto merch drops. The latest bullrun cards, hoodies, and accessories will be available shortly!"
-                    : `No ${selectedFilter.toUpperCase()} themed products available right now. We're expanding our collection with new designs coming soon!`
+                    : `No ${filters[selectedFilter].label} themed products available right now. We're expanding our collection with new designs coming soon!`
                   }
                 </CardDescription>
               </CardHeader>
@@ -355,7 +360,7 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
                     whileTap={{ scale: 0.95 }}
                   >
                     <Button
-                      onClick={() => onFilterChange('all')}
+                      onClick={() => onFilterChange(0)} 
                       size="lg"
                       className="h-12 px-8 font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                     >
@@ -365,7 +370,7 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
                     </Button>
                   </motion.div>
 
-                  {selectedFilter !== 'all' && (
+                  {selectedFilter !== 0 && (
                     <motion.div
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -392,7 +397,7 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     <span className="text-sm font-medium text-foreground">
-                      {selectedFilter === 'all' ? 'Restocking in progress' : 'Category being updated'}
+                      {selectedFilter === 0 ? 'Restocking in progress' : `Category ${filters[selectedFilter].label} being updated`} 
                     </span>
                   </div>
                 </motion.div>
@@ -441,19 +446,12 @@ export function FeaturedProductsSection({ selectedFilter, onFilterChange }: Feat
                 </span>
               </div>
               <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                {selectedFilter === 'all' ? 'Trending Merch' : `${selectedFilter.toUpperCase()} Merch`}
+                {selectedFilter === 0 ? 'Trending Merch' : `${filters[selectedFilter].label} Merch`}
               </h2>
               <p className="text-muted-foreground mt-1">
                 {filteredProducts.length} items found
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="self-start sm:self-center font-mono text-sm h-10 border-2 hover:bg-primary/5"
-            >
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
           </div>
 
           {/* Product Grid */}

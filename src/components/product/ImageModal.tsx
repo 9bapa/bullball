@@ -20,6 +20,7 @@ interface ImageModalProps {
     type?: 'sticker' | 'hoodie' | 'shirt' | 'hat' | 'accessory'
     base_price: number
     cost_price?: number
+    image?: string
     image_url?: string
     gallery_urls?: string[]
     weight_lbs?: number
@@ -40,7 +41,7 @@ interface ImageModalProps {
     priceChange?: number
     cryptoTag?: string
     volume?: number
-    cryptoType?: string
+    cryptoType?: number | string
     chain?: {
       id: number
       name: string
@@ -227,7 +228,7 @@ export function ImageModal({ isOpen, onClose, product }: ImageModalProps) {
                   )}
                   {product.cryptoType && (
                     <Badge variant="outline" className="font-mono text-xs">
-                      {product.cryptoType.toUpperCase()}
+                      {typeof product.cryptoType === 'string' ? product.cryptoType.toUpperCase() : ['ALL', 'BULLRUN', 'BTC', 'ETH', 'BNB', 'SOL', 'SUI'][product.cryptoType] || ''}
                     </Badge>
                   )}
                   {product.chain && (

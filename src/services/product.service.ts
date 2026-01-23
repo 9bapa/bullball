@@ -354,8 +354,11 @@ class ProductService {
     })) || []
   }
 
-  async getProductsByCategory(category: string, activeOnly: boolean = true): Promise<Product[]> {
-    const query = supabaseClient
+  async getProductsByCategory(category: any, activeOnly: boolean = true): Promise<Product[]> {
+    console.log(category)
+    let query:any;
+    if(category ==0){
+      query = supabaseClient
       .from('bullrhun_products')
       .select(`
         *,
@@ -365,14 +368,31 @@ class ProductService {
           logo_url
         )
       `)
-      .eq('type', category)
       .order('created_at', { ascending: false })
+    }else{
+
+    query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq('chain_id', category)
+      .order('created_at', { ascending: false })
+
+    }
+
 
     if (activeOnly) {
       query.eq('is_active', true)
     }
 
     const { data, error } = await query
+    console.log(data)
 
     if (error) {
       console.error('Error fetching products by category:', error)

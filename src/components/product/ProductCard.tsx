@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { ProductFilter } from '@/app/page'
 
 export type RarityLevel = 'common' | 'uncommon' | 'rare' | 'legendary'
 
@@ -19,10 +18,10 @@ export interface ProductCardProps {
   isSale?: boolean
   salePrice?: number
   rarity?: RarityLevel
-  priceChange?: number  // Percentage change like crypto
-  cryptoTag?: string   // Fun crypto tag like "HODL", "MOON", etc.
-  volume?: number      // "Trading volume" = items sold
-  cryptoType?: ProductFilter
+  priceChange?: number
+  cryptoTag?: string
+  volume?: number
+  cryptoType?: number
   onImageClick?: () => void
 }
 
@@ -33,19 +32,20 @@ const rarityLabels: Record<RarityLevel, string> = {
   legendary: 'LEGENDARY',
 }
 
-// Fun border colors based on crypto type
-const getBorderStyles = (cryptoType?: ProductFilter) => {
+const getBorderStyles = (cryptoType?: number) => {
   switch (cryptoType) {
-    case 'bullrun':
+    case 1:
       return 'border-2 border-green-400/60 hover:border-green-400 hover:shadow-green-400/20'
-    case 'btc':
+    case 2:
       return 'border-2 border-orange-400/60 hover:border-orange-400 hover:shadow-orange-400/20'
-    case 'eth':
+    case 3:
       return 'border-2 border-blue-400/60 hover:border-blue-400 hover:shadow-blue-400/20'
-    case 'bnb':
+    case 4:
       return 'border-2 border-yellow-400/60 hover:border-yellow-400 hover:shadow-yellow-400/20'
-    case 'sui':
+    case 6:
       return 'border-2 border-pink-400/60 hover:border-pink-400 hover:shadow-pink-400/20'
+    case 5:
+      return 'border-2 border-purple-400/60 hover:border-purple-400 hover:shadow-purple-400/20'
     default:
       return 'border-2 border-purple-400/60 hover:border-purple-400 hover:shadow-purple-400/20'
   }

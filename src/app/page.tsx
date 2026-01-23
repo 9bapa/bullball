@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
@@ -11,17 +11,20 @@ import { Separator } from '@/components/ui/separator'
 import { Palette } from 'lucide-react'
 import { ProductCardProps } from '@/components/product/ProductCard'
 
-export type ProductFilter = 'all' | 'bullrun' | 'btc' | 'eth' | 'bnb' | 'solana' | 'sui'
+export type ProductFilter = number
 
 export default function Home() {
-  const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('all')
+  const [selectedFilter, setSelectedFilter] = useState<ProductFilter>(0)
   const [selectedProduct, setSelectedProduct] = useState<ProductCardProps | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentSlide, setCurrentSlide] = useState(0)
 
-  const handleImageClick = (product: ProductCardProps) => {
-    setSelectedProduct(product)
-    // setIsModalOpen(false)
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % 2)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
@@ -35,12 +38,44 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 pb-16 md:pb-0">
+        {/* Hero banner with image slider */}
+        <div className="relative bg-[#000] text-[#fff]">
+          {/* Image Slider */}
+          <div className="relative w-full h-[200px] md:h-[400px] lg:h-[500px] overflow-hidden">
+            <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
+              <img
+                src={currentSlide === 0 ? '/slide1.png' : '/slide2.png'}
+                alt={`Hero slide ${currentSlide + 1}`}
+                className="w-full h-full object-cover object-center scale-100 md:scale-110"
+              />
+            </div>
+          </div>
+          
+          
+          {/* Slide indicators */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            <button
+              onClick={() => setCurrentSlide(0)}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                currentSlide === 0 ? 'bg-white' : 'bg-white/50'
+              }`}
+              aria-label="Go to slide 1"
+            />
+            <button
+              onClick={() => setCurrentSlide(1)}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                currentSlide === 1 ? 'bg-white' : 'bg-white/50'
+              }`}
+              aria-label="Go to slide 2"
+            />
+          </div>
+        </div>
         {/* Featured Products */}
         <section>
           <FeaturedProductsSection
             selectedFilter={selectedFilter}
             onFilterChange={setSelectedFilter}
-            onImageClick={handleImageClick}
+            isLoading={false}
           />
         </section>
 
@@ -61,7 +96,7 @@ export default function Home() {
           id: '',
           name: '',
           base_price: 0,
-          image: '',
+          image_url: '',
           isNew: false,
           isSale: false,
           salePrice: 0
