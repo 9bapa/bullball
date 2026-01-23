@@ -42,14 +42,16 @@ export function MobileBottomNav() {
           {/* Center action button */}
           <div className="relative w-20">
             {isHomePage ? (
+              <CartDrawer />
+            ) : (
               <Link
                 href="/"
                 className="flex flex-col items-center justify-center gap-1 h-14 w-full group"
-              >
-                <Home className="h-6 w-6 text-primary group-hover:text-primary/80 transition-colors duration-200" />
+              >  <button className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-2xl p-3.5 shadow-xl hover:-top-9 hover:scale-110 hover:shadow-2xl transition-all duration-300">
+
+                <Home className="h-6 w-6 text-white group-hover:text-primary/80 transition-colors duration-200" />
+                </button>
               </Link>
-            ) : (
-              <CartDrawer />
             )}
           </div>
 
