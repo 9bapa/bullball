@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUserContext } from '@/context/userContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,19 +11,20 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { 
   ArrowLeft, 
-  Building, 
+  Building2, 
   Upload,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle,
   Save,
   Phone,
-  Globe
+  Globe,
+  X
 } from 'lucide-react'
 import { vendorService, CreateVendorRequest } from '@/services/vendor.service'
 import Link from 'next/link'
-import { SharedHeader } from '@/components/layout/shared-header'
-import { SharedFooter } from '@/components/layout/shared-footer'
-import { AdminProtectedRoute } from '@/components/wallet_solana/AdminGate'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 
 interface VendorFormData {
   name: string
@@ -47,7 +48,7 @@ interface VendorFormData {
 
 export default function AddVendorPage() {
   const router = useRouter()
-  const { connected, publicKey, isAdmin } = useUserContext()
+  const { connected, publicKey } = useUserContext()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [previewLogo, setPreviewLogo] = useState<string | null>(null)
@@ -59,20 +60,20 @@ export default function AddVendorPage() {
   const [errorMessage, setErrorMessage] = useState('')
 
   const vendorCategories = [
-  'sticker',
-  'hoodie', 
-  'shirt',
-  'hat',
-  'accessory',
-  'socks',
-  'mug',
-  'cup',
-  'apparel',
-  'poster',
-  'bag',
-  'phone_case',
-  'towel',
-  'blanket'
+    'sticker',
+    'hoodie', 
+    'shirt',
+    'hat',
+    'accessory',
+    'socks',
+    'mug',
+    'cup',
+    'apparel',
+    'poster',
+    'bag',
+    'phone_case',
+    'towel',
+    'blanket'
   ]
 
   const [formData, setFormData] = useState<VendorFormData>({
@@ -96,9 +97,8 @@ export default function AddVendorPage() {
   })
 
   useEffect(() => {
-    // Auto-populate wallet address if wallet is connected
     if (publicKey && !formData.wallet_address) {
-      const walletAddress = publicKey
+      const walletAddress = publicKey.toString()
       setFormData(prev => ({ ...prev, wallet_address: walletAddress }))
     }
   }, [publicKey, formData.wallet_address])
@@ -110,15 +110,12 @@ export default function AddVendorPage() {
     try {
       setUploading(true)
       
-      // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setPreviewLogo(reader.result as string)
       }
       reader.readAsDataURL(file)
 
-      // Here you would upload to your storage service
-      // For now, use base64 data
       setFormData(prev => ({
         ...prev,
         logo_url: reader.result as string
@@ -137,15 +134,12 @@ export default function AddVendorPage() {
     if (!formData.name.trim()) newErrors.name = 'Vendor name is required'
     if (!formData.business_name.trim()) newErrors.business_name = 'Business name is required'
     if (!formData.email.trim()) newErrors.email = 'Email is required'
-    // Wallet address is optional - don't validate as required
     if (!formData.country.trim()) newErrors.country = 'Country is required'
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (formData.email && !emailRegex.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address'
     }
-
-    // Wallet address is optional - no validation needed
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -161,7 +155,6 @@ export default function AddVendorPage() {
       setSubmitError('')
 
       const vendorData: CreateVendorRequest = {
-        // user_id will be derived from wallet_address in service
         name: formData.name.trim(),
         business_name: formData.business_name.trim(),
         email: formData.email.trim(),
@@ -202,510 +195,483 @@ export default function AddVendorPage() {
 
   const handleInputChange = (field: keyof VendorFormData, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }))
     }
   }
 
   return (
-    <AdminProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900">
-        {/* Background Pattern */}
-        <div className="fixed inset-0 opacity-30 pointer-events-none">
-          <div 
-            className="h-full w-full" 
-            style={{ 
-              backgroundImage: `linear-gradient(to right, rgba(139,92,246,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(139,92,246,0.02) 1px, transparent 1px)`,
-              backgroundSize: '50px 50px' 
-            }} 
-          />
-        </div>
+    <>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
+        <Header />
 
-        <SharedHeader />
-        
-        <div className="relative mt-10">
-          <div className="container mx-auto px-4 py-8 md:py-12">
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex items-center gap-4">
-                <Link href="/admin">
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Admin
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-emerald-400 via-purple-400 to-orange-400 bg-clip-text text-transparent leading-none mb-6">
-                    Add New Vendor
-                  </h1>
-                  <p className="text-gray-400">Add a new vendor or supplier to your network</p>
+        <main className="flex-1">
+          <section className="relative py-8 lg:py-12 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-full blur-3xl animate-float-slow" />
+            </div>
+
+            <div className="container relative px-4 max-w-4xl mx-auto">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Link href="/admin">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Admin
+                    </Button>
+                  </Link>
+                  <div>
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+                      <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+                        Add New Vendor
+                      </span>
+                    </h1>
+                    <p className="text-muted-foreground">Add a new vendor or supplier to your network</p>
+                  </div>
                 </div>
-              </div>
 
-              {success && (
-                <Card className="border-emerald-500/50 bg-emerald-500/10 backdrop-blur-sm">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-emerald-400 mb-2">✓</div>
-                    <h3 className="text-lg font-medium text-white mb-2">Vendor Created Successfully!</h3>
-                    <p className="text-gray-400">Redirecting to admin dashboard...</p>
-                  </CardContent>
-                </Card>
-              )}
+                {success && (
+                  <Card className="border-green-500/50 bg-green-500/10">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-green-500 mb-2">✓</div>
+                      <h3 className="text-lg font-medium mb-2">Vendor Created Successfully!</h3>
+                      <p className="text-sm text-muted-foreground">Redirecting to admin dashboard...</p>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {submitError && (
-                <Card className="border-red-500/50 bg-red-500/10 backdrop-blur-sm">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="h-5 w-5 text-red-400" />
-                      <div>
-                        <h3 className="text-lg font-medium text-white mb-1">Error</h3>
-                        <p className="text-gray-400">{submitError}</p>
+                {submitError && (
+                  <Card className="border-red-500/50 bg-red-500/10">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                        <div>
+                          <h3 className="text-lg font-medium mb-1">Error</h3>
+                          <p className="text-sm text-muted-foreground">{submitError}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                )}
 
-              {!success && (
-                <Card className="border-slate-700/50 bg-slate-800/40 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white">Vendor Information</CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Enter vendor's details. All fields marked with * are required.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Logo Upload */}
-                      <div className="space-y-2">
-                        <Label htmlFor="logo_url" className="text-sm font-medium text-gray-300">
-                          Logo
-                        </Label>
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            {previewLogo ? (
-                              <img 
-                                src={previewLogo} 
-                                alt="Logo preview" 
-                                className="h-20 w-20 rounded-lg object-cover border border-slate-600/50"
+                {!success && (
+                  <Card className="border-primary/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-primary" />
+                        Vendor Information
+                      </CardTitle>
+                      <CardDescription>
+                        Enter vendor details. All fields marked with * are required.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="logo_url">
+                            Logo
+                          </Label>
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              {previewLogo ? (
+                                <img 
+                                  src={previewLogo} 
+                                  alt="Logo preview" 
+                                  className="h-20 w-20 rounded-lg object-cover border border-border"
+                                />
+                              ) : (
+                                <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              <input
+                                type="file"
+                                id="logo_url"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                disabled={uploading}
                               />
-                            ) : (
-                              <div className="h-20 w-20 rounded-lg border-2 border-dashed border-slate-600/50 flex items-center justify-center">
-                                <Upload className="h-6 w-6 text-gray-500" />
-                              </div>
-                            )}
-                            <input
-                              type="file"
-                              id="logo_url"
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="absolute inset-0 opacity-0 cursor-pointer"
-                              disabled={uploading}
-                            />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400">Upload vendor logo</p>
-                            <p className="text-xs text-gray-500">Recommended: 200x200px, Max 2MB</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Upload vendor logo</p>
+                              <p className="text-xs text-muted-foreground">Recommended: 200x200px, Max 2MB</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Basic Information */}
-                      <div className="grid gap-6 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="name" className="text-sm font-medium text-gray-300">
-                            Vendor Name <span className="text-red-400">*</span>
-                          </Label>
-                          <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => handleInputChange('name', e.target.value)}
-                            placeholder="Enter vendor name"
-                            className={`bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20 ${
-                              errors.name ? 'border-red-500/50 focus:border-red-500/50' : ''
-                            }`}
-                          />
-                          {errors.name && (
-                            <p className="text-xs text-red-400 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors.name}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="business_name" className="text-sm font-medium text-gray-300">
-                            Business Name <span className="text-red-400">*</span>
-                          </Label>
-                          <Input
-                            id="business_name"
-                            value={formData.business_name}
-                            onChange={(e) => handleInputChange('business_name', e.target.value)}
-                            placeholder="Enter business name"
-                            className={`bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20 ${
-                              errors.business_name ? 'border-red-500/50 focus:border-red-500/50' : ''
-                            }`}
-                          />
-                          {errors.business_name && (
-                            <p className="text-xs text-red-400 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors.business_name}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Contact Information */}
-                      <div className="grid gap-6 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="email" className="text-sm font-medium text-gray-300">
-                            Email <span className="text-red-400">*</span>
-                          </Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
-                            placeholder="vendor@example.com"
-                            className={`bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20 ${
-                              errors.email ? 'border-red-500/50 focus:border-red-500/50' : ''
-                            }`}
-                          />
-                          {errors.email && (
-                            <p className="text-xs text-red-400 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors.email}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="wallet_address" className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                            Solana Wallet Address
-                            {connected && (
-                              <Badge variant="outline" className="text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                                Auto-filled
-                              </Badge>
-                            )}
-                          </Label>
-                          <Input
-                            id="wallet_address"
-                            value={formData.wallet_address}
-                            onChange={(e) => handleInputChange('wallet_address', e.target.value)}
-                            placeholder="Enter Solana wallet address"
-                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                          />
-                          {connected && (
-                            <p className="text-xs text-emerald-400">
-                              Wallet address automatically populated from connected wallet
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="phone" className="text-sm font-medium text-gray-300">
-                            Phone
-                          </Label>
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
-                            placeholder="+1 (555) 123-4567"
-                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Website */}
-                      <div className="space-y-2">
-                        <Label htmlFor="website" className="text-sm font-medium text-gray-300">
-                          Website
-                        </Label>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                          <Input
-                            id="website"
-                            value={formData.website}
-                            onChange={(e) => handleInputChange('website', e.target.value)}
-                            placeholder="https://example.com"
-                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Address Information */}
-                      <div className="space-y-4">
-                        <Label className="text-sm font-medium text-gray-300">Address Information</Label>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-6 md:grid-cols-2">
                           <div className="space-y-2">
-                            <Input
-                              value={formData.address}
-                              onChange={(e) => handleInputChange('address', e.target.value)}
-                              placeholder="Street Address"
-                              className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Input
-                              value={formData.city}
-                              onChange={(e) => handleInputChange('city', e.target.value)}
-                              placeholder="City"
-                              className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Input
-                              value={formData.state}
-                              onChange={(e) => handleInputChange('state', e.target.value)}
-                              placeholder="State/Province"
-                              className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Input
-                              value={formData.zip}
-                              onChange={(e) => handleInputChange('zip', e.target.value)}
-                              placeholder="ZIP/Postal Code"
-                              className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="country" className="text-sm font-medium text-gray-300">
-                              Country <span className="text-red-400">*</span>
+                            <Label htmlFor="name">
+                              Vendor Name <span className="text-red-500">*</span>
                             </Label>
                             <Input
-                              id="country"
-                              value={formData.country}
-                              onChange={(e) => handleInputChange('country', e.target.value)}
-                              placeholder="United States"
-                              className={`bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20 ${
-                                errors.country ? 'border-red-500/50 focus:border-red-500/50' : ''
-                              }`}
+                              id="name"
+                              value={formData.name}
+                              onChange={(e) => handleInputChange('name', e.target.value)}
+                              placeholder="Enter vendor name"
+                              className={errors.name ? 'border-red-500' : ''}
                             />
-                            {errors.country && (
-                              <p className="text-xs text-red-400 flex items-center gap-1">
+                            {errors.name && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" />
-                                {errors.country}
+                                {errors.name}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="business_name">
+                              Business Name <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="business_name"
+                              value={formData.business_name}
+                              onChange={(e) => handleInputChange('business_name', e.target.value)}
+                              placeholder="Enter business name"
+                              className={errors.business_name ? 'border-red-500' : ''}
+                            />
+                            {errors.business_name && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {errors.business_name}
                               </p>
                             )}
                           </div>
                         </div>
-                      </div>
 
-                      {/* Description */}
-                      <div className="space-y-2">
-                        <Label htmlFor="description" className="text-sm font-medium text-gray-300">
-                          Description
-                        </Label>
-                        <Textarea
-                          id="description"
-                          value={formData.description}
-                          onChange={(e) => handleInputChange('description', e.target.value)}
-                          placeholder="Enter vendor description..."
-                          rows={4}
-                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                        />
-                      </div>
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="email">
+                              Email <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => handleInputChange('email', e.target.value)}
+                              placeholder="vendor@example.com"
+                              className={errors.email ? 'border-red-500' : ''}
+                            />
+                            {errors.email && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {errors.email}
+                              </p>
+                            )}
+                          </div>
 
-                      {/* Categories */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium text-gray-300">
-                            Categories (Select all that apply)
+                          <div className="space-y-2">
+                            <Label htmlFor="wallet_address" className="flex items-center gap-2">
+                              Solana Wallet Address
+                              {connected && (
+                                <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                                  Auto-filled
+                                </Badge>
+                              )}
+                            </Label>
+                            <Input
+                              id="wallet_address"
+                              value={formData.wallet_address}
+                              onChange={(e) => handleInputChange('wallet_address', e.target.value)}
+                              placeholder="Enter Solana wallet address"
+                            />
+                            {connected && (
+                              <p className="text-xs text-primary">
+                                Wallet address automatically populated from connected wallet
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">
+                            Phone
                           </Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (formData.categories.length === vendorCategories.length) {
-                                handleInputChange('categories', [])
-                              } else {
-                                handleInputChange('categories', vendorCategories)
-                              }
-                            }}
-                            className="text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                          >
-                            {formData.categories.length === vendorCategories.length ? 'Deselect All' : 'Select All'}
-                          </Button>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="phone"
+                              value={formData.phone}
+                              onChange={(e) => handleInputChange('phone', e.target.value)}
+                              placeholder="+1 (555) 123-4567"
+                              className="pl-10"
+                            />
+                          </div>
                         </div>
-                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                          {vendorCategories.map((category) => (
-                            <div key={category} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id={`category-${category}`}
-                                checked={formData.categories.includes(category)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    handleInputChange('categories', [...formData.categories, category])
-                                  } else {
-                                    handleInputChange('categories', formData.categories.filter(c => c !== category))
-                                  }
-                                }}
-                                className="h-4 w-4 text-emerald-500 border-white/20 rounded focus:ring-emerald-500/20 bg-white/10"
+
+                        <div className="space-y-2">
+                          <Label htmlFor="website">
+                            Website
+                          </Label>
+                          <div className="relative">
+                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="website"
+                              value={formData.website}
+                              onChange={(e) => handleInputChange('website', e.target.value)}
+                              placeholder="https://example.com"
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <Label>Address Information</Label>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            <div className="space-y-2">
+                              <Input
+                                value={formData.address}
+                                onChange={(e) => handleInputChange('address', e.target.value)}
+                                placeholder="Street Address"
                               />
-                              <Label 
-                                htmlFor={`category-${category}`} 
-                                className="text-sm text-gray-300 cursor-pointer hover:text-white transition-colors"
-                              >
-                                {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
-                              </Label>
                             </div>
-                          ))}
+                            <div className="space-y-2">
+                              <Input
+                                value={formData.city}
+                                onChange={(e) => handleInputChange('city', e.target.value)}
+                                placeholder="City"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Input
+                                value={formData.state}
+                                onChange={(e) => handleInputChange('state', e.target.value)}
+                                placeholder="State/Province"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Input
+                                value={formData.zip}
+                                onChange={(e) => handleInputChange('zip', e.target.value)}
+                                placeholder="ZIP/Postal Code"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="country">
+                                Country <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="country"
+                                value={formData.country}
+                                onChange={(e) => handleInputChange('country', e.target.value)}
+                                placeholder="United States"
+                                className={errors.country ? 'border-red-500' : ''}
+                              />
+                              {errors.country && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  {errors.country}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {formData.categories.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            <span className="text-xs text-gray-400">Selected:</span>
-                            {formData.categories.map((category) => (
-                              <Badge key={category} variant="secondary" className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-                                {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
-                              </Badge>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="description">
+                            Description
+                          </Label>
+                          <Textarea
+                            id="description"
+                            value={formData.description}
+                            onChange={(e) => handleInputChange('description', e.target.value)}
+                            placeholder="Enter vendor description..."
+                            rows={4}
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label>
+                              Categories (Select all that apply)
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (formData.categories.length === vendorCategories.length) {
+                                  handleInputChange('categories', [])
+                                } else {
+                                  handleInputChange('categories', vendorCategories)
+                                }
+                              }}
+                              className="text-xs text-primary hover:text-primary/80"
+                            >
+                              {formData.categories.length === vendorCategories.length ? 'Deselect All' : 'Select All'}
+                            </Button>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            {vendorCategories.map((category) => (
+                              <div key={category} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`category-${category}`}
+                                  checked={formData.categories.includes(category)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleInputChange('categories', [...formData.categories, category])
+                                    } else {
+                                      handleInputChange('categories', formData.categories.filter(c => c !== category))
+                                    }
+                                  }}
+                                  className="h-4 w-4"
+                                />
+                                <Label 
+                                  htmlFor={`category-${category}`} 
+                                  className="text-sm cursor-pointer hover:foreground transition-colors"
+                                >
+                                  {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
+                                </Label>
+                              </div>
                             ))}
                           </div>
-                        )}
-                      </div>
-
-                      {/* Commission Rate */}
-                      <div className="space-y-2">
-                        <Label htmlFor="commission_rate" className="text-sm font-medium text-gray-300">
-                          Commission Rate (%)
-                        </Label>
-                        <Input
-                          id="commission_rate"
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="100"
-                          value={formData.commission_rate}
-                          onChange={(e) => handleInputChange('commission_rate', e.target.value)}
-                          placeholder="15"
-                          className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                        />
-                        <p className="text-xs text-gray-500">Default commission rate for this vendor's sales</p>
-                      </div>
-
-                      {/* Status Options */}
-                      <div className="grid gap-6 md:grid-cols-2">
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            id="is_active"
-                            checked={formData.is_active}
-                            onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                            className="h-4 w-4 text-emerald-500 border-white/20 rounded focus:ring-emerald-500/20"
-                          />
-                          <Label htmlFor="is_active" className="text-sm font-medium text-gray-300">
-                            Active Vendor
-                          </Label>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            id="is_featured"
-                            checked={formData.is_featured}
-                            onChange={(e) => handleInputChange('is_featured', e.target.checked)}
-                            className="h-4 w-4 text-yellow-500 border-white/20 rounded focus:ring-yellow-500/20"
-                          />
-                          <Label htmlFor="is_featured" className="text-sm font-medium text-gray-300">
-                            Featured Vendor
-                          </Label>
-                        </div>
-                      </div>
-
-                      {/* Submit Button */}
-                      <div className="flex justify-end gap-3">
-                        <Link href="/admin">
-                          <Button variant="outline" className="border-white/20 text-gray-400 hover:text-white">
-                            Cancel
-                          </Button>
-                        </Link>
-                        <Button
-                          type="submit"
-                          disabled={loading || uploading}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                        >
-                          {loading ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
+                          {formData.categories.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              <span className="text-xs text-muted-foreground">Selected:</span>
+                              {formData.categories.map((category) => (
+                                <Badge key={category} variant="secondary" className="text-xs">
+                                  {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
+                                </Badge>
+                              ))}
+                            </div>
                           )}
-                          {loading ? 'Creating Vendor...' : 'Create Vendor'}
-                        </Button>
-                      </div>
-                    </form>
-                  </CardContent>
-                </Card>
-              )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="commission_rate">
+                            Commission Rate (%)
+                          </Label>
+                          <Input
+                            id="commission_rate"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={formData.commission_rate}
+                            onChange={(e) => handleInputChange('commission_rate', e.target.value)}
+                            placeholder="15"
+                          />
+                          <p className="text-xs text-muted-foreground">Default commission rate for this vendor's sales</p>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id="is_active"
+                              checked={formData.is_active}
+                              onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor="is_active" className="text-sm font-medium">
+                              Active Vendor
+                            </Label>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id="is_featured"
+                              checked={formData.is_featured}
+                              onChange={(e) => handleInputChange('is_featured', e.target.checked)}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor="is_featured" className="text-sm font-medium">
+                              Featured Vendor
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                          <Link href="/admin">
+                            <Button variant="outline">
+                              Cancel
+                            </Button>
+                          </Link>
+                          <Button
+                            type="submit"
+                            disabled={loading || uploading}
+                          >
+                            {loading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground mr-2"></div>
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            {loading ? 'Creating Vendor...' : 'Create Vendor'}
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <Footer />
+        <MobileBottomNav />
+      </div>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-primary/20 rounded-xl p-8 max-w-md w-full">
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="h-10 w-10 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2">Vendor Created Successfully!</h3>
+                <p className="text-muted-foreground">
+                  The vendor "{formData.name}" has been successfully added to your system.
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => setShowSuccessModal(false)}
+                >
+                  Got it
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Success Modal */}
-        {showSuccessModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-emerald-500/30 rounded-xl p-8 max-w-md w-full backdrop-blur-sm">
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="h-10 w-10 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Vendor Created Successfully!</h3>
-                  <p className="text-gray-400">
-                    The vendor "{formData.name}" has been successfully added to your system.
-                  </p>
-                </div>
-                <div className="flex justify-center">
-                  <Button 
-                    onClick={() => setShowSuccessModal(false)}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                  >
-                    Got it
-                  </Button>
-                </div>
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-red-500/30 rounded-xl p-8 max-w-md w-full">
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="h-10 w-10 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2">Error Creating Vendor</h3>
+                <p className="text-muted-foreground">
+                  {errorMessage}
+                </p>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button 
+                  onClick={() => setShowErrorModal(false)}
+                  variant="outline"
+                >
+                  Try Again
+                </Button>
+                <Button 
+                  onClick={() => router.push('/admin')}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Error Modal */}
-        {showErrorModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-red-500/30 rounded-xl p-8 max-w-md w-full backdrop-blur-sm">
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
-                  <AlertCircle className="h-10 w-10 text-red-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Error Creating Vendor</h3>
-                  <p className="text-gray-400">
-                    {errorMessage}
-                  </p>
-                </div>
-                <div className="flex justify-center gap-3">
-                  <Button 
-                    onClick={() => setShowErrorModal(false)}
-                    variant="outline" 
-                    className="border-white/20 text-white hover:bg-white/10"
-                  >
-                    Try Again
-                  </Button>
-                  <Button 
-                    onClick={() => router.push('/admin')}
-                    className="bg-red-500 hover:bg-red-600 text-white"
-                  >
-                    Back to Admin
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <SharedFooter />
-      </div>
-    </AdminProtectedRoute>
+        </div>
+      )}
+    </>
   )
 }

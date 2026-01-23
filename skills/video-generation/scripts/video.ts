@@ -1,4 +1,5 @@
 import ZAI from "z-ai-web-dev-sdk";
+import fs from "fs";
 
 async function create() {
   try {
@@ -23,6 +24,62 @@ async function create() {
     return { zai, task };
   } catch (err: any) {
     console.error("Video generation failed:", err?.message || err);
+    throw err;
+  }
+}
+
+/**
+ * Example: Image-to-Video Generation using base64
+ * IMPORTANT: Using base64-encoded image data is STRONGLY RECOMMENDED over URLs
+ * for better reliability and to avoid network-related issues.
+ * 
+ * CRITICAL: Always match the MIME type to your actual image format.
+ */
+async function createFromImage(imagePath: string) {
+  try {
+    const zai = await ZAI.create();
+
+    console.log("Creating image-to-video generation task...");
+    console.log(`Reading image from: ${imagePath}`);
+
+    // Read image file and convert to base64
+    const imageBuffer = fs.readFileSync(imagePath);
+    
+    // Detect MIME type from file extension
+    const imageExt = imagePath.split('.').pop()?.toLowerCase() || '';
+    const mimeTypeMap: Record<string, string> = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'bmp': 'image/bmp'
+    };
+    const mimeType = mimeTypeMap[imageExt] || 'image/jpeg';  // Default to JPEG if unknown
+    
+    const base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+
+    console.log(`Image format detected: ${mimeType}`);
+    console.log(`Image converted to base64 (${base64Image.substring(0, 50)}...)`);
+
+    // Create video generation task with base64 image
+    const task = await zai.video.generations.create({
+      image_url: base64Image,  // Use base64 with correct MIME type
+      prompt: "Animate this scene with gentle motion",
+      quality: "quality",
+      size: "1920x1080",
+      fps: 30,
+      duration: 5,
+    });
+
+    console.log(`Task created!`);
+    console.log(`Task ID: ${task.id}`);
+    console.log(`Task Status: ${task.task_status}`);
+    console.log(`Model: ${task.model || 'N/A'}`);
+
+    return { zai, task };
+  } catch (err: any) {
+    console.error("Image-to-video generation failed:", err?.message || err);
     throw err;
   }
 }
@@ -62,7 +119,14 @@ async function query(zai: any, taskId: string) {
 
 async function main() {
   try {
+    // Method 1: Text-to-Video (default)
     const { zai, task } = await create();
+    
+    // Method 2: Image-to-Video with base64 (RECOMMENDED for image input)
+    // Uncomment the lines below and comment out the lines above to use image-to-video
+    // Make sure to provide a valid image path
+    // const { zai, task } = await createFromImage('./path/to/your/image.jpg');
+    
     await query(zai, task.id);
   } catch (err: any) {
     console.error("Video generation failed:", err?.message || err);

@@ -12,11 +12,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Standardize wallet address to lowercase
+    const standardizedWalletAddress = wallet_address.toLowerCase()
+
     // Check if user exists
     const { data: existingUser, error: fetchError } = await supabaseService
       .from('bullrhun_users')
       .select('id')
-      .eq('wallet_address', wallet_address)
+      .eq('wallet_address', standardizedWalletAddress)
       .single();
 
     if (fetchError) {

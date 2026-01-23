@@ -1,416 +1,628 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 
-const supabaseClient = (supabase)!;
+const supabaseClient = supabase!
 
 export interface Product {
-  id: string;
-  vendor_id: string;
-  name: string;
-  description?: string;
-  type: 'sticker' | 'hoodie' | 'shirt' | 'hat' | 'accessory';
-  base_price: number;
-  cost_price?: number;
-  image_url?: string;
-  gallery_urls?: string[];
-  weight_lbs?: number;
-  sku?: string;
-  barcode?: string;
-  track_inventory: boolean;
-  is_digital: boolean;
-  requires_shipping: boolean;
-  status: 'active' | 'draft' | 'archived';
-  tags?: string[];
-  features?: string[];
-  created_at?: string;
-  updated_at?: string;
+  id: string
+  vendor_id: string
+  name: string
+  description?: string
+  base_price: number
+  cost_price?: number
+  inventory_quantity: number
+  image_url?: string
+  is_active: boolean
+  is_featured: boolean
+  type?: string
+  category?: string
+  tags?: string[]
+  variants?: ProductVariant[]
+  rating?: number
+  total_sales?: number
+  views?: number
+  weight_lbs?: number
+  created_at?: string
+  updated_at?: string
+  vendor?: {
+    id: string
+    name: string
+    logo_url?: string
+  }
 }
 
 export interface ProductVariant {
-  id: string;
-  product_id: string;
-  name?: string;
-  sku?: string;
-  price?: number;
-  price_adjustment?: number;
-  compare_price?: number;
-  cost_price?: number;
-  cost_adjustment?: number;
-  image_url?: string;
-  inventory_quantity?: number;
-  stock_quantity?: number;
-  min_threshold?: number;
-  status: 'active' | 'draft' | 'archived';
-  position?: number;
-  option1?: string;
-  option2?: string;
-  option3?: string;
-  color?: string;
-  size?: string;
-  weight_adjustment?: number;
-  reorder_level?: number;
-  created_at?: string;
-  updated_at?: string;
+  id: string
+  product_id: string
+  name: string
+  sku?: string
+  price: number
+  cost_price?: number
+  stock_quantity: number
+  is_active: boolean
+  image_url?: string
+  color?: string
+  size?: string
+  price_adjustment?: number
+  weight_adjustment?: number
+  created_at?: string
+  updated_at?: string
 }
 
-export interface ProductWithVariants extends Product {
-  variants?: ProductVariant[];
-  images?: { url: string; position: number }[];
-  vendor_name?: string;
-  commission_rate?: number;
-  inventory_quantity?: number;
-  min_threshold?: number;
-  category?: string;
+export interface CreateProductRequest {
+  vendor_id: string
+  name: string
+  description?: string
+  base_price: number
+  cost_price?: number
+  inventory_quantity: number
+  image_url?: string
+  is_active?: boolean
+  is_featured?: boolean
+  type?: string
+  category?: string
+  tags?: string[]
 }
 
-export class ProductService {
-  static async getAllProducts(activeOnly: boolean = true): Promise<ProductWithVariants[]> {
-    try {
-      
-      let query = supabaseClient
-        .from('bullrhun_products')
-        .select(`
-          *,
-          vendor:bullrhun_vendors(name, email, commission_rate),
-          variants:bullrhun_product_variants(
-            id,
-            color,
-            size,
-            sku,
-            price_adjustment,
-            cost_adjustment,
-            stock_quantity,
-            reorder_level,
-            is_active
-          )
-        `)
-        .order('created_at', { ascending: false });
+export interface UpdateProductRequest extends Partial<CreateProductRequest> {
+  is_active?: boolean
+  is_featured?: boolean
+}
 
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
+export interface CreateVariantRequest {
+  product_id: string
+  name: string
+  sku?: string
+  price: number
+  cost_price?: number
+  stock_quantity: number
+  image_url?: string
+  is_active?: boolean
+}
 
-      const { data, error } = await query;
+export interface ProductStats {
+  total_products: number
+  active_products: number
+  featured_products: number
+  low_stock_products: number
+  total_inventory_value: number
+  average_price: number
+  top_selling_products: Product[]
+}
 
-      if (error) {
-        console.error('Error fetching products:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          fullError: error
-        });
-        throw error;
-      }
+class ProductService {
+  async getAllProducts(activeOnly: boolean = true, featuredOnly: boolean = false): Promise<Product[]> {
+    let query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .order('created_at', { ascending: false })
 
-      // Transform data to match expected format
-      const transformedData = (data || []).map(product => ({
-        ...product,
-        // Transform variants
-        variants: product.variants || [],
-        // Transform gallery_urls to images array format
-        images: (product.gallery_urls || []).map((url, index) => ({ 
-          url, 
-          position: index + 1 
-        })),
-        // Add vendor name and commission rate
-        vendor_name: product.vendor?.name,
-        commission_rate: product.vendor?.commission_rate,
-        // Calculate total inventory from variants, or use main product inventory if no variants
-        inventory_quantity: product.variants && product.variants.length > 0 
-          ? product.variants.reduce((sum, variant) => sum + (variant.stock_quantity || 0), 0)
-          : product.inventory_quantity || 0,
-        // Use reorder level from first variant or default
-        min_threshold: product.variants?.[0]?.reorder_level || 5,
-        // Map type to category
-        category: product.type || 'General'
-      })) as ProductWithVariants[];
+    if (activeOnly) {
+      query = query.eq('is_active', true)
+    }
 
-      return transformedData;
-    } catch (error) {
-      console.error('ProductService.getAllProducts error:', error);
-      throw error;
+    if (featuredOnly) {
+      query = query.eq('is_featured', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching products:', error)
+      throw new Error(`Failed to fetch products: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getProductById(id: string): Promise<Product | null> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        ),
+        bullrhun_product_variants (*)
+      `)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching product by ID:', error)
+      throw new Error(`Failed to fetch product: ${error.message}`)
+    }
+
+    if (!data) return null
+
+    return {
+      ...data,
+      vendor: data.bullrhun_vendors,
+      variants: data.bullrhun_product_variants
     }
   }
 
-  static async getProductById(id: string): Promise<ProductWithVariants | null> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_products')
-        .select(`
-          *,
-          vendor:bullrhun_vendors(name, email),
-          variants:bullrhun_product_variants(
-            id,
-            name,
-            sku,
-            price,
-            compare_price,
-            inventory_quantity,
-            min_threshold,
-            status
-          ),
-          images:bullrhun_product_images(url, position)
-        `)
-        .eq('id', id)
-        .single();
+  async createProduct(product: CreateProductRequest): Promise<Product> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .insert([product])
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .single()
 
-      if (error) {
-        console.error('Error fetching product:', error);
-        throw error;
-      }
+    if (error) {
+      console.error('Error creating product:', error)
+      throw new Error(`Failed to create product: ${error.message}`)
+    }
 
-      if (!data) return null;
-
-      return {
-        ...data,
-        vendor_name: data.vendor?.name,
-        images: data.images || [],
-        variants: data.variants || []
-      } as ProductWithVariants;
-    } catch (error) {
-      console.error('ProductService.getProductById error:', error);
-      throw error;
+    return {
+      ...data,
+      vendor: data.bullrhun_vendors
     }
   }
 
-  static async createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_products')
-        .insert([product])
-        .select()
-        .single();
+  async updateProduct(id: string, product: UpdateProductRequest): Promise<Product> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .update(product)
+      .eq('id', id)
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .single()
 
-      if (error) {
-        console.error('Error creating product:', error);
-        throw error;
-      }
+    if (error) {
+      console.error('Error updating product:', error)
+      throw new Error(`Failed to update product: ${error.message}`)
+    }
 
-      return data as Product;
-    } catch (error) {
-      console.error('ProductService.createProduct error:', error);
-      throw error;
+    return {
+      ...data,
+      vendor: data.bullrhun_vendors
     }
   }
 
-  static async updateProduct(id: string, product: Partial<Product>): Promise<Product> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_products')
-        .update(product)
-        .eq('id', id)
-        .select()
-        .single();
+  async deleteProduct(id: string): Promise<void> {
+    const { error } = await supabaseClient
+      .from('bullrhun_products')
+      .delete()
+      .eq('id', id)
 
-      if (error) {
-        console.error('Error updating product:', error);
-        throw error;
-      }
-
-      return data as Product;
-    } catch (error) {
-      console.error('ProductService.updateProduct error:', error);
-      throw error;
+    if (error) {
+      console.error('Error deleting product:', error)
+      throw new Error(`Failed to delete product: ${error.message}`)
     }
   }
 
-  static async deleteProduct(id: string): Promise<void> {
+  async getProductStats(): Promise<ProductStats> {
     try {
-      // Delete related records first
-      await Promise.all([
-        supabaseClient.from('bullrhun_product_images').delete().eq('product_id', id),
-        supabaseClient.from('bullrhun_product_variants').delete().eq('product_id', id),
-        supabaseClient.from('bullrhun_inventory').delete().eq('product_id', id)
-      ]);
-
-      // Then delete the product
-      const { error } = await supabaseClient
+      const { count: totalProducts, error: totalError } = await supabaseClient
         .from('bullrhun_products')
-        .delete()
-        .eq('id', id);
+        .select('*', { count: 'exact' })
 
-      if (error) {
-        console.error('Error deleting product:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('ProductService.deleteProduct error:', error);
-      throw error;
-    }
-  }
-
-  static async getProductStats(): Promise<{
-    total: number;
-    active: number;
-    draft: number;
-    archived: number;
-    lowStock: number;
-  }> {
-    try {
-      const { data: products, error } = await supabaseClient
+      const { count: activeProducts, error: activeError } = await supabaseClient
         .from('bullrhun_products')
-        .select('status, variants:bullrhun_product_variants(inventory_quantity, min_threshold)');
+        .select('*', { count: 'exact' })
+        .eq('is_active', true)
 
-      if (error) {
-        console.error('Error fetching product stats:', error);
-        throw error;
-      }
-
-      const stats = {
-        total: products?.length || 0,
-        active: products?.filter(p => p.status === 'active').length || 0,
-        draft: products?.filter(p => p.status === 'draft').length || 0,
-        archived: products?.filter(p => p.status === 'archived').length || 0,
-        lowStock: 0
-      };
-
-      // Calculate low stock
-      products?.forEach(product => {
-        product.variants?.forEach(variant => {
-          if (
-            variant.inventory_quantity && 
-            variant.min_threshold && 
-            variant.inventory_quantity <= variant.min_threshold
-          ) {
-            stats.lowStock++;
-          }
-        });
-      });
-
-      return stats;
-    } catch (error) {
-      console.error('ProductService.getProductStats error:', error);
-      throw error;
-    }
-  }
-
-  static async getFeaturedProducts(limit: number): Promise<ProductWithVariants[]> {
-    try {
-      const { data, error } = await supabaseClient
+      const { count: featuredProducts, error: featuredError } = await supabaseClient
         .from('bullrhun_products')
-        .select(`
-          *,
-          category,
-          vendor:bullrhun_vendors(name, email),
-          variants:bullrhun_product_variants(
-            id,
-            name,
-            sku,
-            price,
-            compare_price,
-            inventory_quantity,
-            min_threshold,
-            status
-          ),
-          images:bullrhun_product_images(url, position)
-        `)
-        .eq('status', 'active')
+        .select('*', { count: 'exact' })
         .eq('is_featured', true)
-        .limit(limit)
-        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching featured products:', error);
-        throw error;
-      }
-
-      return (data || []).map(product => ({
-        ...product,
-        vendor_name: product.vendor?.name,
-        images: product.images || [],
-        variants: product.variants || []
-      })) as ProductWithVariants[];
-    } catch (error) {
-      console.error('ProductService.getFeaturedProducts error:', error);
-      throw error;
-    }
-  }
-
-  static async getProductsByType(type: string): Promise<ProductWithVariants[]> {
-    try {
-      const { data, error } = await supabaseClient
+      const { count: lowStockProducts, error: lowStockError } = await supabaseClient
         .from('bullrhun_products')
-        .select(`
-          *,
-          category,
-          vendor:bullrhun_vendors(name, email),
-          variants:bullrhun_product_variants(
-            id,
-            name,
-            sku,
-            price,
-            compare_price,
-            inventory_quantity,
-            min_threshold,
-            status
-          ),
-          images:bullrhun_product_images(url, position)
-        `)
-        .eq('category', type)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .lt('inventory_quantity', 10)
 
-      if (error) {
-        console.error('Error fetching products by type:', error);
-        throw error;
+      const { data: products, error: productsError } = await supabaseClient
+        .from('bullrhun_products')
+        .select('base_price, inventory_quantity')
+        .eq('is_active', true)
+
+      if (totalError || activeError || featuredError || lowStockError || productsError) {
+        console.error('Error fetching product stats:', { totalError, activeError, featuredError, lowStockError, productsError })
+        throw new Error('Failed to fetch product statistics')
       }
 
-      return (data || []).map(product => ({
-        ...product,
-        vendor_name: product.vendor?.name,
-        images: product.images || [],
-        variants: product.variants || []
-      })) as ProductWithVariants[];
-    } catch (error) {
-      console.error('ProductService.getProductsByType error:', error);
-      throw error;
-    }
-  }
+      const totalValue = products?.reduce((sum, p) => sum + (p.base_price * p.inventory_quantity), 0) || 0
+      const avgPrice = products?.length > 0 ? totalValue / products.length : 0
 
-  static async getVariantById(variantId: string): Promise<ProductVariant | null> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_product_variants')
-        .select('*')
-        .eq('id', variantId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching variant:', error);
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('ProductService.getVariantById error:', error);
-      throw error;
-    }
-  }
-
-  static async checkStock(variantId: string, quantity: number): Promise<{ available: boolean; stock: number }> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_product_variants')
-        .select('inventory_quantity')
-        .eq('id', variantId)
-        .single();
-
-      if (error) {
-        console.error('Error checking stock:', error);
-        throw error;
-      }
-
-      const stockQuantity = data?.inventory_quantity || 0;
       return {
-        available: stockQuantity >= quantity,
-        stock: stockQuantity
-      };
+        total_products: totalProducts || 0,
+        active_products: activeProducts || 0,
+        featured_products: featuredProducts || 0,
+        low_stock_products: lowStockProducts || 0,
+        total_inventory_value: totalValue,
+        average_price: avgPrice,
+        top_selling_products: []
+      }
     } catch (error) {
-      console.error('ProductService.checkStock error:', error);
-      throw error;
+      console.error('ProductService.getProductStats error:', error)
+      throw error
     }
+  }
+
+  async searchProducts(query: string, activeOnly: boolean = true): Promise<Product[]> {
+    const searchQuery = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
+
+    if (activeOnly) {
+      searchQuery.eq('is_active', true)
+    }
+
+    const { data, error } = await searchQuery
+
+    if (error) {
+      console.error('Error searching products:', error)
+      throw new Error(`Failed to search products: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getProductsByVendor(vendorId: string, activeOnly: boolean = true): Promise<Product[]> {
+    const query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq('vendor_id', vendorId)
+      .order('created_at', { ascending: false })
+
+    if (activeOnly) {
+      query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching products by vendor:', error)
+      throw new Error(`Failed to fetch products by vendor: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getFeaturedProducts(limit: number = 10): Promise<Product[]> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq('is_active', true)
+      .eq('is_featured', true)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('Error fetching featured products:', error)
+      throw new Error(`Failed to fetch featured products: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getProductsByCategory(category: string, activeOnly: boolean = true): Promise<Product[]> {
+    const query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq('type', category)
+      .order('created_at', { ascending: false })
+
+    if (activeOnly) {
+      query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching products by category:', error)
+      throw new Error(`Failed to fetch products by category: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getLowStockProducts(threshold: number = 10, activeOnly: boolean = true): Promise<Product[]> {
+    const query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .lt('inventory_quantity', threshold)
+      .order('inventory_quantity', { ascending: true })
+
+    if (activeOnly) {
+      query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching low stock products:', error)
+      throw new Error(`Failed to fetch low stock products: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async updateProductStock(id: string, quantity: number, operation: 'add' | 'subtract' | 'set'): Promise<Product> {
+    const product = await this.getProductById(id)
+    if (!product) throw new Error('Product not found')
+
+    let newQuantity = quantity
+    if (operation === 'add') {
+      newQuantity = product.inventory_quantity + quantity
+    } else if (operation === 'subtract') {
+      newQuantity = Math.max(0, product.inventory_quantity - quantity)
+    }
+
+    return this.updateProduct(id, { inventory_quantity: newQuantity })
+  }
+
+  async toggleFeatured(id: string, is_featured: boolean): Promise<Product> {
+    return this.updateProduct(id, { is_featured })
+  }
+
+  async updateProductRating(id: string, rating: number): Promise<Product> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .update({ rating })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating product rating:', error)
+      throw new Error(`Failed to update product rating: ${error.message}`)
+    }
+
+    return data
+  }
+
+  async incrementProductViews(id: string): Promise<void> {
+    const { error } = await supabaseClient
+      .rpc('increment_product_views', { product_id: id })
+
+    if (error) {
+      console.error('Error incrementing product views:', error)
+      throw new Error(`Failed to increment product views: ${error.message}`)
+    }
+  }
+
+  async getProductVariants(productId: string, activeOnly: boolean = true): Promise<ProductVariant[]> {
+    const query = supabaseClient
+      .from('bullrhun_product_variants')
+      .select('*')
+      .eq('product_id', productId)
+      .order('name', { ascending: true })
+
+    if (activeOnly) {
+      query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching product variants:', error)
+      throw new Error(`Failed to fetch product variants: ${error.message}`)
+    }
+
+    return data || []
+  }
+
+  async createVariant(variant: CreateVariantRequest): Promise<ProductVariant> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_product_variants')
+      .insert([variant])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating product variant:', error)
+      throw new Error(`Failed to create product variant: ${error.message}`)
+    }
+
+    return data
+  }
+
+  async updateVariant(id: string, variant: Partial<CreateVariantRequest>): Promise<ProductVariant> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_product_variants')
+      .update(variant)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating product variant:', error)
+      throw new Error(`Failed to update product variant: ${error.message}`)
+    }
+
+    return data
+  }
+
+  async deleteVariant(id: string): Promise<void> {
+    const { error } = await supabaseClient
+      .from('bullrhun_product_variants')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting product variant:', error)
+      throw new Error(`Failed to delete product variant: ${error.message}`)
+    }
+  }
+
+  async updateVariantStock(id: string, quantity: number, operation: 'add' | 'subtract' | 'set'): Promise<ProductVariant> {
+    const { data: variant } = await supabaseClient
+      .from('bullrhun_product_variants')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (!variant) throw new Error('Variant not found')
+
+    let newQuantity = quantity
+    if (operation === 'add') {
+      newQuantity = variant.stock_quantity + quantity
+    } else if (operation === 'subtract') {
+      newQuantity = Math.max(0, variant.stock_quantity - quantity)
+    }
+
+    return this.updateVariant(id, { stock_quantity: newQuantity })
+  }
+
+  async getProductsByTag(tag: string, activeOnly: boolean = true): Promise<Product[]> {
+    const query = supabaseClient
+      .from('bullrhun_products')
+      .select(`
+        *,
+        bullrhun_vendors (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .contains('tags', [tag])
+      .order('created_at', { ascending: false })
+
+    if (activeOnly) {
+      query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching products by tag:', error)
+      throw new Error(`Failed to fetch products by tag: ${error.message}`)
+    }
+
+    return data?.map(p => ({
+      ...p,
+      vendor: p.bullrhun_vendors
+    })) || []
+  }
+
+  async getAllTags(): Promise<string[]> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_products')
+      .select('tags')
+
+    if (error) {
+      console.error('Error fetching tags:', error)
+      throw new Error(`Failed to fetch tags: ${error.message}`)
+    }
+
+    const tags = new Set<string>()
+    data?.forEach(p => p.tags?.forEach(t => tags.add(t)))
+    return Array.from(tags)
+  }
+
+  async checkStock(variantId: string | null, quantity: number): Promise<{ available: boolean; stock: number }> {
+    if (variantId) {
+      const { data: variant } = await supabaseClient
+        .from('bullrhun_product_variants')
+        .select('stock_quantity')
+        .eq('id', variantId)
+        .single()
+
+      if (!variant) {
+        return { available: false, stock: 0 }
+      }
+
+      const available = variant.stock_quantity >= quantity
+      return { available, stock: variant.stock_quantity }
+    } else {
+      const { data: product } = await supabaseClient
+        .from('bullrhun_products')
+        .select('inventory_quantity')
+        .eq('is_active', true)
+        .single()
+
+      if (!product) {
+        return { available: false, stock: 0 }
+      }
+
+      const available = product.inventory_quantity >= quantity
+      return { available, stock: product.inventory_quantity }
+    }
+  }
+
+  async getProducts(activeOnly: boolean = true, featuredOnly: boolean = false): Promise<Product[]> {
+    return this.getAllProducts(activeOnly, featuredOnly)
   }
 }
 
-// Export both class and instance for compatibility
-export const productService = ProductService;
+export { ProductService }
+export const productService = new ProductService()

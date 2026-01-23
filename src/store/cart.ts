@@ -1,48 +1,55 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { productService, ProductWithVariants, ProductVariant } from '@/services/product.service';
+import { productService, Product, ProductVariant } from '@/services/product.service';
 
 export interface CartItem {
-  id: string; // product_id + variant_id
+  id: string;
   product_id: string;
   variant_id: string;
   quantity: number;
-  product: ProductWithVariants;
+  product: Product;
   variant: ProductVariant | null;
 }
 
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
-  
+
   // Actions
-  addItem: (product: ProductWithVariants, variant: ProductVariant | null, quantity?: number) => Promise<void>;
+  addItem: (product: Product, variant: ProductVariant | null, walletAddress: string, quantity?: number) => Promise<void>;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;
-  
+
   // Getters
   getItemCount: () => number;
   getTotalItems: () => number;
   getSubtotal: () => number;
   getTotalWeight: () => number;
   getItemById: (id: string) => CartItem | undefined;
+
+  // Helper function to set cart items
+  setItems: (items: CartItem[]) => void;
+}
+
+// Clear any existing localStorage data that might cause quota issues
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('bullrhun-cart');
 }
 
 export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       items: [],
       isOpen: false,
 
-      addItem: async (product: ProductWithVariants, variant: ProductVariant | null, quantity = 1) => {
+      addItem: async (product: Product, variant: ProductVariant | null, walletAddress: string, quantity: number = 1) => {
+        // Generate unique cart item ID
         const cartItemId = variant ? `${product.id}-${variant.id}` : `${product.id}-no-variant`;
         const currentItems = get().items;
         const existingItem = currentItems.find(item => item.id === cartItemId);
 
-        // Check stock only if variant exists
+        // Check stock only if variant exists or product tracks inventory
         if (variant) {
           const stockCheck = await productService.checkStock(variant.id, quantity);
           if (!stockCheck.available) {
@@ -50,7 +57,7 @@ export const useCartStore = create<CartStore>()(
           }
         } else {
           // Check stock for base product if no variant
-          const stockCheck = await productService.checkStock(product.id, quantity);
+          const stockCheck = await productService.checkStock(null, quantity);
           if (!stockCheck.available) {
             throw new Error(`Insufficient stock. Only ${stockCheck.stock} items available.`);
           }
@@ -59,11 +66,12 @@ export const useCartStore = create<CartStore>()(
         if (existingItem) {
           // Update existing item
           const newQuantity = existingItem.quantity + quantity;
-          const stockCheck = await productService.checkStock(variant ? variant.id : product.id, newQuantity);
+          const stockCheck = await productService.checkStock(variant ? variant.id : null, newQuantity);
           if (!stockCheck.available) {
             throw new Error(`Insufficient stock. Only ${stockCheck.stock} items available.`);
           }
 
+          // Update local state immediately
           set(state => ({
             items: state.items.map(item =>
               item.id === cartItemId
@@ -71,6 +79,30 @@ export const useCartStore = create<CartStore>()(
                 : item
             )
           }));
+
+          // Update in database via API
+          try {
+            const normalizedWalletAddress = walletAddress.toLowerCase();
+            console.log('Adding to cart with wallet address:', normalizedWalletAddress);
+            const response = await fetch(`/api/cart?wallet=${normalizedWalletAddress}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                product_id: product.id,
+                variant_id: variant?.id || null,
+                quantity: newQuantity
+              })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              console.log('Cart updated successfully in database');
+            } else {
+              console.error('Failed to update cart in database:', data.error);
+            }
+          } catch (error) {
+            console.error('Error updating cart in database:', error);
+          }
         } else {
           // Add new item
           set(state => ({
@@ -83,6 +115,30 @@ export const useCartStore = create<CartStore>()(
               variant
             }]
           }));
+
+          // Add to database via API
+          try {
+            const normalizedWalletAddress = walletAddress.toLowerCase();
+            console.log('Adding new item to cart with wallet address:', normalizedWalletAddress);
+            const response = await fetch(`/api/cart?wallet=${normalizedWalletAddress}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                product_id: product.id,
+                variant_id: variant?.id || null,
+                quantity
+              })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              console.log('Cart item added successfully to database');
+            } else {
+              console.error('Failed to add cart item to database:', data.error);
+            }
+          } catch (error) {
+            console.error('Error adding cart item to database:', error);
+          }
         }
       },
 
@@ -92,8 +148,8 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      updateQuantity: async (id: string, quantity: number) => {
-        if (quantity <= 0) {
+      updateQuantity: async (id: string, newQuantity: number) => {
+        if (newQuantity <= 0) {
           get().removeItem(id);
           return;
         }
@@ -101,19 +157,55 @@ export const useCartStore = create<CartStore>()(
         const item = get().getItemById(id);
         if (!item) return;
 
-        // Check stock
-        const stockCheck = await productService.checkStock(item.variant?.id || item.product_id, quantity);
+        // Check stock for the total desired quantity
+        const stockCheck = await productService.checkStock(item.variant?.id || null, newQuantity);
         if (!stockCheck.available) {
           throw new Error(`Insufficient stock. Only ${stockCheck.stock} items available.`);
         }
 
+        // Update local state immediately for responsive UI
         set(state => ({
             items: state.items.map(cartItem =>
-            cartItem.id === id
-              ? { ...cartItem, quantity }
-              : cartItem
-          )
+                cartItem.id === id
+                    ? { ...cartItem, quantity: newQuantity }
+                    : cartItem
+            )
         }));
+
+        // Update in database via PUT API
+        try {
+            const response = await fetch(`/api/cart/update`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cart_item_id: id,
+                    quantity: newQuantity
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to update cart in database:', data.error);
+                // Revert local state if API call fails
+                set(state => ({
+                    items: state.items.map(cartItem =>
+                        cartItem.id === id
+                            ? { ...cartItem, quantity: item.quantity }
+                            : cartItem
+                    )
+                }));
+            }
+        } catch (error) {
+            console.error('Error updating cart in database:', error);
+            // Revert local state if API call fails
+            set(state => ({
+                items: state.items.map(cartItem =>
+                    cartItem.id === id
+                        ? { ...cartItem, quantity: item.quantity }
+                        : cartItem
+                )
+            }));
+        }
       },
 
       clearCart: () => {
@@ -140,7 +232,7 @@ export const useCartStore = create<CartStore>()(
         return get().items.reduce((total, item) => {
           const unitPrice = item.product.base_price + (item.variant?.price_adjustment || 0);
           return total + (unitPrice * item.quantity);
-        }, 0);
+        },0);
       },
 
       getTotalWeight: () => {
@@ -148,16 +240,15 @@ export const useCartStore = create<CartStore>()(
           const productWeight = item.product.weight_lbs || 0;
           const variantWeight = item.variant?.weight_adjustment || 0;
           return total + ((productWeight + variantWeight) * item.quantity);
-        }, 0);
+        },0);
       },
 
       getItemById: (id: string) => {
         return get().items.find(item => item.id === id);
+      },
+
+      setItems: (items: CartItem[]) => {
+        set({ items })
       }
-    }),
-    {
-      name: 'bullrhun-cart',
-      partialize: (state) => ({ items: state.items })
-    }
-  )
+    })
 );

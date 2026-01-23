@@ -7,6 +7,11 @@ export async function POST(request: NextRequest) {
   try {
     const orderData = await request.json();
 
+    // Standardize wallet address to lowercase
+    if (orderData.customer_wallet_address) {
+      orderData.customer_wallet_address = orderData.customer_wallet_address.toLowerCase();
+    }
+
     // Validate required fields
     if (!orderData.customer_wallet_address || !orderData.customer_name || !orderData.billing_address || !orderData.billing_city || !orderData.billing_zip || !orderData.billing_country || !orderData.items || orderData.items.length === 0) {
       return NextResponse.json(
@@ -89,8 +94,8 @@ export async function POST(request: NextRequest) {
       for (const item of orderData.items) {
         console.log('Processing item:', item);
         
-        // Handle variant_id properly - convert 'no-variant' to null
-        const variantId = item.variant_id === 'no-variant' ? null : item.variant_id;
+        // Handle variant_id properly - convert 'no-variant' or 'default' to null
+        const variantId = item.variant_id === 'no-variant' || item.variant_id === 'default' ? null : item.variant_id;
         
         // Validate required fields before insertion
         if (!item.product_id) {
@@ -151,8 +156,8 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
           unit_price: item.product?.base_price || 0,
           total_price: itemTotal,
-          unit_cost: item.product?.cost || 0,
-          total_cost: (item.product?.cost || 0) * item.quantity,
+          unit_cost: item.product?.cost_price || 0,
+          total_cost: (item.product?.cost_price || 0) * item.quantity,
           status: 'pending',
           vendor_order_id: null,
           created_at: new Date().toISOString()
@@ -180,7 +185,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         message: 'Order created successfully',
-        order: data
+        order: data,
+        payment_address: solanaAddress,
+        payment_amount_sol: orderData.payment_amount_sol || parseFloat((subtotal / (process.env.NEXT_PUBLIC_SOL_PRICE ? parseFloat(process.env.NEXT_PUBLIC_SOL_PRICE) : 128.17)).toFixed(3))
       },
       { status: 201 }
     );

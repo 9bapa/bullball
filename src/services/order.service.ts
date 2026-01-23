@@ -1,623 +1,657 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
-import { productService, ProductWithVariants, ProductVariant } from './product.service';
-import { supabase } from '@/lib/supabase';
-import { encryptionService } from '@/lib/encryption';
+import { supabase } from '@/lib/supabase'
 
-const supabaseClient = (supabase)!;
+const supabaseClient = supabase!
 
 export interface Order {
-  id: string;
-  user_id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  billing_address: string;
-  billing_city: string;
-  billing_state?: string;
-  billing_zip: string;
-  billing_country: string;
-  shipping_address?: string;
-  shipping_city?: string;
-  shipping_state?: string;
-  shipping_zip?: string;
-  shipping_country?: string;
-  subtotal: number;
-  tax_amount: number;
-  shipping_cost: number;
-  total_amount: number;
-  shipping_method: 'standard' | 'rush' | 'express';
-  shipping_carrier?: string;
-  tracking_number?: string;
-  tracking_url?: string;
-  estimated_delivery?: string;
-  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-  payment_method: string;
-  solana_payment_address?: string;
-  solana_payment_signature?: string;
-  payment_amount_sol?: number;
-  payment_confirmed_at?: string;
-  notes?: string;
-  internal_notes?: string;
-  created_at: string;
-  updated_at: string;
-  items?: OrderItem[];
+  id: string
+  user_id: string
+  vendor_id: string
+  order_number: string
+  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
+  payment_status: 'pending' | 'completed' | 'failed' | 'refunded'
+  payment_method?: string
+  payment_id?: string
+  total_amount: number
+  subtotal_amount: number
+  shipping_amount: number
+  tax_amount?: number
+  currency: string
+  shipping_address?: OrderAddress
+  billing_address?: OrderAddress
+  notes?: string
+  created_at?: string
+  updated_at?: string
+  user?: {
+    id: string
+    wallet_address?: string
+    email?: string
+  }
+  vendor?: {
+    id: string
+    name: string
+  }
+  order_items?: OrderItem[]
 }
 
 export interface OrderItem {
-  id: string;
-  order_id: string;
-  product_id: string;
-  variant_id: string;
-  vendor_id: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  unit_cost?: number;
-  total_cost?: number;
-  status: string;
-  vendor_order_id?: string;
-  created_at: string;
-  product?: ProductWithVariants;
-  variant?: ProductVariant;
+  id: string
+  order_id: string
+  product_id: string
+  product_variant_id?: string
+  quantity: number
+  unit_price: number
+  total_price: number
+  product?: {
+    id: string
+    name: string
+    image_url?: string
+    type?: string
+  }
+  variant?: {
+    id: string
+    name: string
+  }
 }
 
-export interface CartItem {
-  product_id: string;
-  variant_id: string;
-  quantity: number;
-  product: ProductWithVariants;
-  variant: ProductVariant | null;
+export interface OrderAddress {
+  recipient_name?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state?: string
+  postal_code?: string
+  country?: string
+  phone?: string
 }
 
 export interface CreateOrderRequest {
-  customer_wallet_address: string; // Links to bullrhun_orders table
-  customer_name: string;
-  customer_phone?: string;
-  billing_address: string;
-  billing_city: string;
-  billing_state?: string;
-  billing_zip: string;
-  billing_country: string;
-  shipping_address?: string;
-  shipping_city?: string;
-  shipping_state?: string;
-  shipping_zip?: string;
-  shipping_country?: string;
-  shipping_method: 'standard' | 'rush' | 'express';
-  items: CartItem[];
-  payment_amount_sol?: number; // Amount of SOL needed for payment
-  notes?: string;
+  user_id: string
+  vendor_id: string
+  order_items: Array<{
+    product_id: string
+    product_variant_id?: string
+    quantity: number
+  }>
+  shipping_address?: OrderAddress
+  billing_address?: OrderAddress
+  payment_method?: string
+  notes?: string
 }
 
-export interface ShippingRate {
-  id: string;
-  method: 'standard' | 'rush' | 'express';
-  carrier: string;
-  base_cost: number;
-  cost_per_lb: number;
-  free_shipping_threshold?: number;
-  description: string;
-  estimated_days: string;
-  max_weight_lbs: number;
+export interface UpdateOrderRequest {
+  status?: Order['status']
+  payment_status?: Order['payment_status']
+  shipping_address?: OrderAddress
+  notes?: string
 }
+
+export interface OrderStats {
+  total_orders: number
+  pending_orders: number
+  processing_orders: number
+  shipped_orders: number
+  delivered_orders: number
+  cancelled_orders: number
+  refunded_orders: number
+  total_revenue: number
+  average_order_value: number
+}
+
+const SHIPPING_RATES = {
+  standard: { cost: 9.99, days: '5-7' },
+  express: { cost: 19.99, days: '2-3' },
+  overnight: { cost: 39.99, days: '1' }
+}
+
+const SOL_PRICE_USD = 200
 
 class OrderService {
-  async createOrder(request: CreateOrderRequest): Promise<Order> {
-    // Calculate totals
-    let subtotal = 0;
-    let totalWeight = 0;
-    
-    const orderItems = await Promise.all(
-        request.items.map(async (item) => {
-          const unitPrice = item.product.base_price + (item.variant?.price || 0);
-          const totalPrice = unitPrice * item.quantity;
-          subtotal += totalPrice;
-          
-          // Calculate weight
-          const productWeight = item.product.weight_lbs || 0;
-          const variantWeight = 0; // No weight adjustment available
-          totalWeight += (productWeight + variantWeight) * item.quantity;
-          
-          return {
-            product_id: item.product.id,
-            variant_id: item.variant?.id,
-            vendor_id: item.product.vendor_id,
-            quantity: item.quantity,
-            unit_price: unitPrice,
-            total_price: totalPrice,
-            unit_cost: item.product.cost_price || 0,
-            total_cost: (item.product.cost_price || 0) * item.quantity
-          };
-        })
-      );
-
-    // Get shipping rate
-    const shippingRate = await this.getShippingRate(request.shipping_method);
-    if (!shippingRate) {
-      throw new Error(`Invalid shipping method: ${request.shipping_method}`);
-    }
-
-    let shippingCost = shippingRate.base_cost;
-    if (totalWeight > 0) {
-      shippingCost += totalWeight * shippingRate.cost_per_lb;
-    }
-
-    // Check for free shipping
-    if (shippingRate.free_shipping_threshold && subtotal >= shippingRate.free_shipping_threshold) {
-      shippingCost = 0;
-    }
-
-    // Calculate tax (simplified - you may want to implement region-based tax)
-    const taxRate = 0.08; // 8% tax
-    const taxAmount = subtotal * taxRate;
-    const totalAmount = subtotal + taxAmount + shippingCost;
-
-    // Generate order number
-    const { data: orderNumber } = await supabaseClient
-      .rpc('generate_order_number');
-
-    if (!orderNumber) {
-      throw new Error('Failed to generate order number');
-    }
-
-    // Create order
-    const { data: order, error: orderError } = await supabaseClient
-      .from('bullrhun_orders')
-      .insert({
-        customer_wallet_address: request.customer_wallet_address, // Link order to user wallet
-        order_number: orderNumber,
-        customer_name: request.customer_name,
-        customer_phone: request.customer_phone,
-        billing_address: request.billing_address,
-        billing_city: request.billing_city,
-        billing_state: request.billing_state,
-        billing_zip: request.billing_zip,
-        billing_country: request.billing_country,
-        shipping_address: request.shipping_address || request.billing_address,
-        shipping_city: request.shipping_city || request.billing_city,
-        shipping_state: request.shipping_state || request.billing_state,
-        shipping_zip: request.shipping_zip || request.billing_zip,
-        shipping_country: request.shipping_country || request.billing_country,
-        subtotal,
-        tax_amount: taxAmount,
-        shipping_cost: shippingCost,
-        total_amount: totalAmount,
-        shipping_method: request.shipping_method,
-        status: 'pending',
-        payment_method: 'crypto',
-        notes: request.notes
-      })
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      throw new Error(`Failed to create order: ${orderError.message}`);
-    }
-
-    // Create order items
-    const { error: itemsError } = await supabaseClient
-      .from('bullrhun_order_items')
-      .insert(
-        orderItems.map(item => ({
-          ...item,
-          order_id: order.id
-        }))
-      );
-
-    if (itemsError) {
-      console.error('Error creating order items:', itemsError);
-      throw new Error(`Failed to create order items: ${itemsError.message}`);
-    }
-
-    // Generate Solana payment address
-    const { publicKey: paymentAddress, encryptedPrivateKey } = await this.generateSolanaPaymentAddress();
-    
-    // Update order with payment address and encrypted private key
-    const { data: updatedOrder, error: updateError } = await supabaseClient
-      .from('bullrhun_orders')
-      .update({
-        solana_payment_address: paymentAddress,
-        solana_private_key: encryptedPrivateKey
-      })
-      .eq('id', order.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Error updating order with payment address:', updateError);
-      throw new Error(`Failed to update order: ${updateError.message}`);
-    }
-
-    return this.getOrderById(updatedOrder.id);
-  }
-
-  async getOrderById(id: string): Promise<Order> {
-    const query = supabaseClient
+  async getAllOrders(status?: Order['status']): Promise<Order[]> {
+    let query = supabaseClient
       .from('bullrhun_orders')
       .select(`
         *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
         bullrhun_order_items (
           *,
           bullrhun_products (
-            *,
-            bullrhun_vendors (
-              name,
-              business_name
-            )
+            id,
+            name,
+            image_url,
+            type
           ),
-          bullrhun_product_variants (*)
+          bullrhun_product_variants (
+            id,
+            name
+          )
         )
       `)
-      .eq('id', id)
-      .single();
+      .order('created_at', { ascending: false })
 
-    const { data, error } = await query;
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found - order might not exist yet
-        console.log(`Order not found or not yet created: ${id}`);
-        throw new Error('Order not found or still being processed');
-      }
-      console.error('Error fetching order:', error);
-      throw new Error(`Failed to fetch order: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error('Order not found');
-    }
-
-    return {
-      ...data,
-      items: data.bullrhun_order_items?.map((item: any) => ({
-        ...item,
-        product: item.bullrhun_products,
-        variant: item.bullrhun_product_variants
-      })) || []
-    };
-  }
-
-  async getOrderByNumber(orderNumber: string): Promise<Order | null> {
-    const query = supabaseClient
-      .from('bullrhun_orders')
-      .select(`
-        *,
-        bullrhun_order_items (
-          *,
-          bullrhun_products (
-            *,
-            bullrhun_vendors (
-              name,
-              business_name
-            )
-          ),
-          bullrhun_product_variants (*)
-        )
-      `)
-      .eq('order_number', orderNumber)
-      .single();
-
-    const { data, error } = await query;
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // Not found
-      }
-      console.error('Error fetching order by number:', error);
-      throw new Error(`Failed to fetch order: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return {
-      ...data,
-      items: data.bullrhun_order_items?.map((item: any) => ({
-        ...item,
-        product: item.bullrhun_products,
-        variant: item.bullrhun_product_variants
-      })) || []
-    };
-  }
-
-  async getCustomerOrders(customerEmail: string): Promise<Order[]> {
-    const query = supabaseClient
-      .from('bullrhun_orders')
-      .select(`
-        *,
-        bullrhun_order_items (
-          *,
-          bullrhun_products (
-            *,
-            bullrhun_vendors (
-              name,
-              business_name
-            )
-          ),
-          bullrhun_product_variants (*)
-        )
-      `)
-      .eq('customer_email', customerEmail)
-      .order('created_at', { ascending: false });
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching customer orders:', error);
-      throw new Error(`Failed to fetch customer orders: ${error.message}`);
+      console.error('Error fetching orders:', error)
+      throw new Error(`Failed to fetch orders: ${error.message}`)
     }
 
     return data?.map(order => ({
       ...order,
-      items: order.bullrhun_order_items?.map((item: any) => ({
+      user: order.bullrhun_users,
+      vendor: order.bullrhun_vendors,
+      order_items: order.bullrhun_order_items?.map(item => ({
         ...item,
         product: item.bullrhun_products,
         variant: item.bullrhun_product_variants
-      })) || []
-    })) || [];
+      }))
+    })) || []
   }
 
-  async updateOrderStatus(orderId: string, status: Order['status'], trackingNumber?: string, trackingUrl?: string): Promise<Order> {
-    const updateData: any = { status };
-    
-    if (trackingNumber) {
-      updateData.tracking_number = trackingNumber;
-    }
-    
-    if (trackingUrl) {
-      updateData.tracking_url = trackingUrl;
-    }
-
-    // Set estimated delivery for shipped orders
-    if (status === 'shipped') {
-      const estimatedDelivery = new Date();
-      estimatedDelivery.setDate(estimatedDelivery.getDate() + 5); // Estimate 5 days for delivery
-      updateData.estimated_delivery = estimatedDelivery.toISOString();
-    }
-
+  async getOrderById(id: string): Promise<Order | null> {
     const { data, error } = await supabaseClient
       .from('bullrhun_orders')
-      .update(updateData)
-      .eq('id', orderId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating order status:', error);
-      throw new Error(`Failed to update order status: ${error.message}`);
-    }
-
-    return this.getOrderById(data.id);
-  }
-
-  async confirmPayment(orderId: string, signature: string, amountSol: number): Promise<Order> {
-    const { data, error } = await supabaseClient
-      .from('bullrhun_orders')
-      .update({
-        status: 'paid',
-        solana_payment_signature: signature,
-        payment_amount_sol: amountSol,
-        payment_confirmed_at: new Date().toISOString()
-      })
-      .eq('id', orderId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error confirming payment:', error);
-      throw new Error(`Failed to confirm payment: ${error.message}`);
-    }
-
-    return this.getOrderById(data.id);
-  }
-
-  async getShippingRate(method: 'standard' | 'rush' | 'express'): Promise<ShippingRate | null> {
-    const { data, error } = await supabaseClient
-      .from('bullrhun_shipping_rates')
-      .select('*')
-      .eq('method', method)
-      .eq('is_active', true)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found - return default fallback shipping rate
-        console.log(`No shipping rate found for method: ${method}, using fallback`);
-        return this.getDefaultShippingRate(method);
-      }
-      console.error('Error fetching shipping rate:', error);
-      return this.getDefaultShippingRate(method);
-    }
-
-    return data;
-  }
-
-  // Fallback shipping rates when database is empty
-  private getDefaultShippingRate(method: 'standard' | 'rush' | 'express'): ShippingRate {
-    const rates = {
-      standard: {
-        id: 'fallback-standard',
-        method: 'standard' as const,
-        carrier: 'Standard Shipping',
-        base_cost: 5.99,
-        cost_per_lb: 0.50,
-        free_shipping_threshold: 50,
-        description: 'Standard delivery within 5-7 business days',
-        estimated_days: '5-7 days',
-        max_weight_lbs: 50
-      },
-      rush: {
-        id: 'fallback-rush',
-        method: 'rush' as const,
-        carrier: 'Rush Shipping',
-        base_cost: 12.99,
-        cost_per_lb: 1.00,
-        free_shipping_threshold: 75,
-        description: 'Rush delivery within 2-3 business days',
-        estimated_days: '2-3 days',
-        max_weight_lbs: 50
-      },
-      express: {
-        id: 'fallback-express',
-        method: 'express' as const,
-        carrier: 'Express Shipping',
-        base_cost: 24.99,
-        cost_per_lb: 2.00,
-        free_shipping_threshold: 100,
-        description: 'Express delivery within 1-2 business days',
-        estimated_days: '1-2 days',
-        max_weight_lbs: 50
-      }
-    };
-
-    return rates[method];
-  }
-
-  async getAllShippingRates(): Promise<ShippingRate[]> {
-    const { data, error } = await supabaseClient
-      .from('bullrhun_shipping_rates')
-      .select('*')
-      .eq('is_active', true)
-      .order('base_cost', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching shipping rates:', error);
-      throw new Error(`Failed to fetch shipping rates: ${error.message}`);
-    }
-
-    return data || [];
-  }
-
-  async getDecryptedPrivateKey(orderId: string): Promise<Uint8Array | null> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_orders')
-        .select('solana_private_key')
-        .eq('id', orderId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching encrypted private key:', error);
-        return null;
-      }
-
-      if (!data?.solana_private_key) {
-        console.log('No encrypted private key found for order:', orderId);
-        return null;
-      }
-
-      // Decrypt the private key
-      const privateKeyArray = encryptionService.decryptPrivateKey(data.solana_private_key);
-      return new Uint8Array(privateKeyArray);
-    } catch (error) {
-      console.error('Error decrypting private key:', error);
-      return null;
-    }
-  }
-
-  private async generateSolanaPaymentAddress(): Promise<{ publicKey: string; encryptedPrivateKey: string }> {
-    // Generate a unique keypair for this order
-    const keypair = Keypair.generate();
-    const publicKey = keypair.publicKey.toBase58();
-    const privateKeyArray = Array.from(keypair.secretKey);
-    
-    // Encrypt the private key
-    const encryptedPrivateKey = encryptionService.encryptPrivateKey(privateKeyArray);
-    
-    // In a real implementation, you would:
-    // 1. Store this encrypted keypair securely (done)
-    // 2. Set up a monitoring service to watch for payments
-    // 3. Transfer funds to your main wallet when payment is received
-    
-    return { publicKey, encryptedPrivateKey };
-  }
-
-  async calculateShippingCost(method: 'standard' | 'rush' | 'express', weight: number, subtotal: number): Promise<number> {
-    const shippingRate = await this.getShippingRate(method);
-    if (!shippingRate) {
-      throw new Error(`Invalid shipping method: ${method}`);
-    }
-
-    let cost = shippingRate.base_cost;
-    
-    if (weight > 0) {
-      cost += weight * shippingRate.cost_per_lb;
-    }
-
-    // Check for free shipping
-    if (shippingRate.free_shipping_threshold && subtotal >= shippingRate.free_shipping_threshold) {
-      cost = 0;
-    }
-
-    return cost;
-  }
-
-  async convertUSDToSOL(usdAmount: number): Promise<number> {
-    try {
-      // Get current SOL price from CoinGecko
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-      const data = await response.json();
-      
-      if (!data.solana?.usd) {
-        throw new Error('Could not fetch SOL price');
-      }
-      
-      const solPrice = data.solana.usd;
-      return usdAmount / solPrice;
-    } catch (error) {
-      console.error('Error converting USD to SOL:', error);
-      // Fallback rate if API fails
-      const fallbackRate = 150; // $150 per SOL
-      return usdAmount / fallbackRate;
-    }
-  }
-
-  async getAllOrders(): Promise<Order[]> {
-    try {
-      const { data, error } = await supabaseClient
-        .from('bullrhun_orders')
-        .select(`
+      .select(`
+        *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
+        bullrhun_order_items (
           *,
-          bullrhun_order_items (
-            *,
-            bullrhun_products (
-              *,
-              bullrhun_vendors (
-                name,
-                business_name
-              )
-            ),
-            bullrhun_product_variants (*)
+          bullrhun_products (
+            id,
+            name,
+            image_url,
+            type
+          ),
+          bullrhun_product_variants (
+            id,
+            name
           )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to recent orders
+        )
+      `)
+      .eq('id', id)
+      .single()
 
-      if (error) {
-        console.error('Error fetching all orders:', error);
-        throw new Error(`Failed to fetch orders: ${error.message}`);
-      }
-
-      if (!data) {
-        return [];
-      }
-
-      return data.map((order: any) => ({
-        ...order,
-        items: order.bullrhun_order_items?.map((item: any) => ({
-          ...item,
-          product: item.bullrhun_products,
-          variant: item.bullrhun_product_variants
-        })) || []
-      }));
-    } catch (error) {
-      console.error('Error in getAllOrders:', error);
-      throw error;
+    if (error) {
+      console.error('Error fetching order by ID:', error)
+      throw new Error(`Failed to fetch order: ${error.message}`)
     }
+
+    if (!data) return null
+
+    return {
+      ...data,
+      user: data.bullrhun_users,
+      vendor: data.bullrhun_vendors,
+      order_items: data.bullrhun_order_items?.map(item => ({
+        ...item,
+        product: item.bullrhun_products,
+        variant: item.bullrhun_product_variants
+      }))
+    }
+  }
+
+  async getOrdersByUser(userId: string, status?: Order['status']): Promise<Order[]> {
+    let query = supabaseClient
+      .from('bullrhun_orders')
+      .select(`
+        *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
+        bullrhun_order_items (
+          *,
+          bullrhun_products (
+            id,
+            name,
+            image_url,
+            type
+          ),
+          bullrhun_product_variants (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching orders by user:', error)
+      throw new Error(`Failed to fetch orders by user: ${error.message}`)
+    }
+
+    return data?.map(order => ({
+      ...order,
+      user: order.bullrhun_users,
+      vendor: order.bullrhun_vendors,
+      order_items: order.bullrhun_order_items?.map(item => ({
+        ...item,
+        product: item.bullrhun_products,
+        variant: item.bullrhun_product_variants
+      }))
+    })) || []
+  }
+
+  async getOrdersByVendor(vendorId: string, status?: Order['status']): Promise<Order[]> {
+    let query = supabaseClient
+      .from('bullrhun_orders')
+      .select(`
+        *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
+        bullrhun_order_items (
+          *,
+          bullrhun_products (
+            id,
+            name,
+            image_url,
+            type
+          ),
+          bullrhun_product_variants (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('vendor_id', vendorId)
+      .order('created_at', { ascending: false })
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching orders by vendor:', error)
+      throw new Error(`Failed to fetch orders by vendor: ${error.message}`)
+    }
+
+    return data?.map(order => ({
+      ...order,
+      user: order.bullrhun_users,
+      vendor: order.bullrhun_vendors,
+      order_items: order.bullrhun_order_items?.map(item => ({
+        ...item,
+        product: item.bullrhun_products,
+        variant: item.bullrhun_product_variants
+      }))
+    })) || []
+  }
+
+  async createOrder(order: CreateOrderRequest): Promise<Order> {
+    const { data: products, error: productsError } = await supabaseClient
+      .from('bullrhun_products')
+      .select('id, base_price, inventory_quantity, is_active')
+      .in('id', order.order_items.map(item => item.product_id))
+
+    if (productsError || !products) {
+      throw new Error('Failed to fetch product details')
+    }
+
+    const productMap = new Map(products.map(p => [p.id, p]))
+
+    const orderItems = order.order_items.map(item => {
+      const product = productMap.get(item.product_id)
+      if (!product || !product.is_active) {
+        throw new Error(`Product ${item.product_id} is not available`)
+      }
+      if (product.inventory_quantity < item.quantity) {
+        throw new Error(`Insufficient stock for product ${item.product_id}`)
+      }
+
+      return {
+        product_id: item.product_id,
+        product_variant_id: item.product_variant_id,
+        quantity: item.quantity,
+        unit_price: product.base_price,
+        total_price: product.base_price * item.quantity
+      }
+    })
+
+    const subtotalAmount = orderItems.reduce((sum, item) => sum + item.total_price, 0)
+    const shippingAmount = SHIPPING_RATES.standard.cost
+
+    const { data: orderData, error: orderError } = await supabaseClient
+      .from('bullrhun_orders')
+      .insert([{
+        user_id: order.user_id,
+        vendor_id: order.vendor_id,
+        order_number: this.generateOrderNumber(),
+        status: 'pending',
+        payment_status: 'pending',
+        total_amount: subtotalAmount + shippingAmount,
+        subtotal_amount: subtotalAmount,
+        shipping_amount: shippingAmount,
+        currency: 'USD',
+        shipping_address: order.shipping_address,
+        billing_address: order.billing_address,
+        payment_method: order.payment_method,
+        notes: order.notes
+      }])
+      .select()
+      .single()
+
+    if (orderError) {
+      console.error('Error creating order:', orderError)
+      throw new Error(`Failed to create order: ${orderError.message}`)
+    }
+
+    const orderItemsWithOrderId = orderItems.map(item => ({
+      ...item,
+      order_id: orderData.id
+    }))
+
+    const { error: itemsError } = await supabaseClient
+      .from('bullrhun_order_items')
+      .insert(orderItemsWithOrderId)
+
+    if (itemsError) {
+      console.error('Error creating order items:', itemsError)
+      await supabaseClient.from('bullrhun_orders').delete().eq('id', orderData.id)
+      throw new Error(`Failed to create order items: ${itemsError.message}`)
+    }
+
+    const { error: stockError } = await Promise.all(
+      order.order_items.map(item =>
+        supabaseClient.rpc('decrement_product_stock', {
+          product_id: item.product_id,
+          quantity: item.quantity
+        })
+      )
+    )
+
+    if (stockError) {
+      console.error('Error updating stock:', stockError)
+    }
+
+    return this.getOrderById(orderData.id) as Promise<Order>
+  }
+
+  async updateOrder(id: string, order: UpdateOrderRequest): Promise<Order> {
+    const { data, error } = await supabaseClient
+      .from('bullrhun_orders')
+      .update(order)
+      .eq('id', id)
+      .select(`
+        *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
+        bullrhun_order_items (
+          *,
+          bullrhun_products (
+            id,
+            name,
+            image_url,
+            type
+          ),
+          bullrhun_product_variants (
+            id,
+            name
+          )
+        )
+      `)
+      .single()
+
+    if (error) {
+      console.error('Error updating order:', error)
+      throw new Error(`Failed to update order: ${error.message}`)
+    }
+
+    return {
+      ...data,
+      user: data.bullrhun_users,
+      vendor: data.bullrhun_vendors,
+      order_items: data.bullrhun_order_items?.map(item => ({
+        ...item,
+        product: item.bullrhun_products,
+        variant: item.bullrhun_product_variants
+      }))
+    }
+  }
+
+  async updateOrderStatus(id: string, status: Order['status']): Promise<Order> {
+    return this.updateOrder(id, { status })
+  }
+
+  async updatePaymentStatus(id: string, paymentStatus: Order['payment_status'], paymentId?: string): Promise<Order> {
+    return this.updateOrder(id, {
+      payment_status: paymentStatus,
+      payment_id: paymentId
+    })
+  }
+
+  async deleteOrder(id: string): Promise<void> {
+    const { error } = await supabaseClient
+      .from('bullrhun_orders')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting order:', error)
+      throw new Error(`Failed to delete order: ${error.message}`)
+    }
+  }
+
+  async getOrderStats(): Promise<OrderStats> {
+    try {
+      const { count: totalOrders, error: totalError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+
+      const { count: pendingOrders, error: pendingError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'pending')
+
+      const { count: processingOrders, error: processingError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'processing')
+
+      const { count: shippedOrders, error: shippedError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'shipped')
+
+      const { count: deliveredOrders, error: deliveredError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'delivered')
+
+      const { count: cancelledOrders, error: cancelledError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'cancelled')
+
+      const { count: refundedOrders, error: refundedError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('*', { count: 'exact' })
+        .eq('status', 'refunded')
+
+      const { data: orders, error: revenueError } = await supabaseClient
+        .from('bullrhun_orders')
+        .select('total_amount')
+        .eq('payment_status', 'completed')
+
+      if (totalError || pendingError || processingError || shippedError || deliveredError || cancelledError || refundedError || revenueError) {
+        console.error('Error fetching order stats:', {
+          totalError, pendingError, processingError, shippedError, deliveredError, cancelledError, refundedError, revenueError
+        })
+        throw new Error('Failed to fetch order statistics')
+      }
+
+      const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
+      const avgOrderValue = totalOrders && totalOrders > 0 ? totalRevenue / totalOrders : 0
+
+      return {
+        total_orders: totalOrders || 0,
+        pending_orders: pendingOrders || 0,
+        processing_orders: processingOrders || 0,
+        shipped_orders: shippedOrders || 0,
+        delivered_orders: deliveredOrders || 0,
+        cancelled_orders: cancelledOrders || 0,
+        refunded_orders: refundedOrders || 0,
+        total_revenue: totalRevenue,
+        average_order_value: avgOrderValue
+      }
+    } catch (error) {
+      console.error('OrderService.getOrderStats error:', error)
+      throw error
+    }
+  }
+
+  async searchOrders(query: string, status?: Order['status']): Promise<Order[]> {
+    const searchQuery = supabaseClient
+      .from('bullrhun_orders')
+      .select(`
+        *,
+        bullrhun_users (
+          id,
+          wallet_address,
+          email
+        ),
+        bullrhun_vendors (
+          id,
+          name
+        ),
+        bullrhun_order_items (
+          *,
+          bullrhun_products (
+            id,
+            name,
+            image_url,
+            type
+          ),
+          bullrhun_product_variants (
+            id,
+            name
+          )
+        )
+      `)
+      .or(`order_number.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
+
+    if (status) {
+      searchQuery.eq('status', status)
+    }
+
+    const { data, error } = await searchQuery
+
+    if (error) {
+      console.error('Error searching orders:', error)
+      throw new Error(`Failed to search orders: ${error.message}`)
+    }
+
+    return data?.map(order => ({
+      ...order,
+      user: order.bullrhun_users,
+      vendor: order.bullrhun_vendors,
+      order_items: order.bullrhun_order_items?.map(item => ({
+        ...item,
+        product: item.bullrhun_products,
+        variant: item.bullrhun_product_variants
+      }))
+    })) || []
+  }
+
+  async getShippingRates(): Promise<typeof SHIPPING_RATES> {
+    return SHIPPING_RATES
+  }
+
+  async convertSolToUsd(solAmount: number): Promise<number> {
+    return solAmount * SOL_PRICE_USD
+  }
+
+  async convertUsdToSol(usdAmount: number): Promise<number> {
+    return usdAmount / SOL_PRICE_USD
+  }
+
+  async getUserOrderCount(userId: string): Promise<number> {
+    const { count, error } = await supabaseClient
+      .from('bullrhun_orders')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error fetching user order count:', error)
+      throw new Error(`Failed to fetch user order count: ${error.message}`)
+    }
+
+    return count || 0
+  }
+
+  async getVendorOrderCount(vendorId: string): Promise<number> {
+    const { count, error } = await supabaseClient
+      .from('bullrhun_orders')
+      .select('*', { count: 'exact' })
+      .eq('vendor_id', vendorId)
+
+    if (error) {
+      console.error('Error fetching vendor order count:', error)
+      throw new Error(`Failed to fetch vendor order count: ${error.message}`)
+    }
+
+    return count || 0
+  }
+
+  private generateOrderNumber(): string {
+    const date = new Date()
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+    return `ORD-${year}-${month}-${random}`
+  }
+
+  async getOrders(status?: Order['status']): Promise<Order[]> {
+    return this.getAllOrders(status)
   }
 }
 
-export const orderService = new OrderService();
+export { OrderService }
+export const orderService = new OrderService()

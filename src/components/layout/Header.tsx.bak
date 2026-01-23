@@ -1,0 +1,95 @@
+'use client'
+
+import { useState } from 'react'
+import { ShoppingCart, Search, User, Menu as MenuIcon, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { SlideOutMenu } from './SlideOutMenu'
+
+export function Header() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const cartCount = 3
+
+  return (
+    <>
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center relative">
+              <span className="font-brand text-2xl font-bold tracking-tight text-primary">
+                BullRhun
+              </span>
+              <div className="absolute -right-3 -top-1 w-2 h-2 bg-green-500 rounded-full pulse-subtle" />
+            </div>
+          </div>
+        </div>
+
+        <nav className="hidden md:flex items-center gap-8">
+          <a
+            href="#"
+            className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors relative group"
+          >
+            Shop
+            <span className="absolute -bottom-5 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
+          </a>
+          <a
+            href="#"
+            className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors relative group"
+          >
+            Categories
+            <span className="absolute -bottom-5 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
+          </a>
+          <a
+            href="#"
+            className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors relative group"
+          >
+            New Arrivals
+            <span className="absolute -bottom-5 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
+          </a>
+          <a
+            href="#"
+            className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors relative group"
+          >
+            Sale
+            <Badge className="ml-1 h-5 px-1.5 text-[10px] font-mono bg-destructive text-destructive-foreground">
+              HOT
+            </Badge>
+          </a>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="hidden md:flex hover:bg-primary/5">
+            <Search className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="hidden md:flex hover:bg-primary/5">
+            <User className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hover:bg-primary/5"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs font-mono font-bold"
+            >
+              {cartCount}
+            </Badge>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden hover:bg-primary/5"
+            onClick={() => setIsMenuOpen(true)}
+          >
+            {isMenuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+          </Button>
+        </div>
+      </div>
+    </header>
+
+      <SlideOutMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} cartCount={cartCount} />
+    </>
+  )
+}

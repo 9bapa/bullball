@@ -1,36 +1,61 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, Press_Start_2P } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/ui/sonner"
-import HydrationWrapper from '@/components/ui/hydration-wrapper'
-import { SolanaWalletProvider } from '@/components/wallet_solana/WalletProvider'
+import { Orbitron, Outfit, Inter, Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { SolanaWalletProvider } from "@/components/solana/SolanaWalletProvider";
 import { UserProvider } from '@/context/userContext'
 import "@solana/wallet-adapter-react-ui/styles.css";
+import "./globals.css";
 
-const inter = Inter({ 
+// Brand font - Futuristic, geometric
+const orbitron = Orbitron({
+  variable: "--font-orbitron",
   subsets: ["latin"],
-  weight: ['400', '500', '600', '700', '900'],
-  display: 'swap',
-  variable: '--font-inter'
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({ 
+// Header font - Bold, modern, confident
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-space-grotesk'
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-const pressStart = Press_Start_2P({ 
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ['400'],
-  display: 'swap',
-  variable: '--font-press-start'
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Body font - Clean, highly readable
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "BullRhun - Meme Coin Merch Store",
-  description: "Rock the latest meme coin merch. From Doge to Pepe, Shiba to Floki - we've got your crypto swag covered!",
+  title: "BullRhun - 24/7 Bullrhun",
+  description: "The go-to marketplace for crypto & trading merch, swag, and gag gifts. Smart. Playful. Confident.",
+  keywords: ["BullRhun", "bullrun", "crypto", "trading", "merch", "swag", "gag gifts", "bitcoin", "ethereum","blockchain", "bnb", "binance", "xrp", "crypto merch", "trading swag", "crypto gifts", "trading merchandise", "crypto apparel"],
+  authors: [{ name: "BullRhun Team" }],
+  openGraph: {
+    title: "BullRhun - 24/7 Bullrhun",
+    description: "The go-to marketplace for crypto & trading merch, swag, and gag gifts",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BullRhun - 24/7 Bullrhun",
+    description: "The go-to marketplace for crypto & trading merch, swag, and gag gifts",
+  },
 };
 
 export default function RootLayout({
@@ -39,16 +64,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} ${pressStart.variable} antialiased min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white font-sans`}>
-          <SolanaWalletProvider>
-            <UserProvider>
-                <HydrationWrapper>
-                  {children}
-                  <Toaster />
-                </HydrationWrapper>
-              </UserProvider>
-          </SolanaWalletProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${orbitron.variable} ${outfit.variable} ${inter.variable} font-sans antialiased`}
+      >
+        <SolanaWalletProvider>
+          <UserProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <Toaster />
+            </ThemeProvider>
+          </UserProvider>
+        </SolanaWalletProvider>
       </body>
     </html>
   );

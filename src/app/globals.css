@@ -6,8 +6,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* BullRhun Font Variables */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-outfit);
+  --font-brand: var(--font-orbitron);
+
+  /* Standard shadcn/ui variables */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -37,111 +42,120 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+
+  /* Pixar-style soft edges (larger radius for friendly feel) */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
 :root {
-  --radius: 1rem;
-  
-  /* Font Variables - Crypto Trading Optimized */
-  --font-display: var(--font-space-grotesk), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body: var(--font-inter), 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-fun: var(--font-press-start), 'VT323', 'Courier New', monospace;
-  
-  /* Meme Coin Vibrant Theme */
-  --meme-purple: #8b5cf6;
-  --meme-purple-dark: #7c3aed;
-  --meme-blue: #3b82f6;
-  --meme-blue-dark: #2563eb;
-  --meme-green: #10b981;
-  --meme-green-dark: #059669;
-  --meme-orange: #f97316;
-  --meme-orange-dark: #ea580c;
-  --meme-pink: #ec4899;
-  --meme-pink-dark: #db2777;
-  --meme-yellow: #fbbf24;
-  --meme-red: #ef4444;
-  
-  /* Dark Theme Base */
-  --dark-bg: #0a0a0a;
-  --dark-surface: #1a1a1a;
-  --dark-surface-light: #2a2a2a;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  
-  /* Neon Gradients */
-  --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-  --gradient-green: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-  --gradient-orange: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-  --gradient-pink: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
-  --gradient-rainbow: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 25%, #10b981 50%, #f97316 75%, #ec4899 100%);
-  
-  /* Background Gradients */
-  --gradient-bg: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
-  --gradient-bg-alt: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 50%, #1a1a1a 100%);
-  
-  /* Typography */
-  --font-display: var(--font-display);
-  --font-body: var(--font-body);
-  --font-fun: var(--font-fun);
-  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-  
-  /* Spacing & Transitions */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
-  
-  /* Tailwind Variable Overrides */
-  --background: var(--dark-bg);
-  --foreground: #f3f4f6;
-  --card: var(--dark-surface);
-  --card-foreground: #f3f4f6;
-  --popover: var(--dark-surface);
-  --popover-foreground: #f3f4f6;
-  --primary: var(--meme-purple);
-  --primary-foreground: white;
-  --secondary: var(--dark-surface-light);
-  --secondary-foreground: #d1d5db;
-  --muted: var(--dark-surface-light);
-  --muted-foreground: #9ca3af;
-  --accent: var(--meme-orange);
-  --accent-foreground: white;
-  --destructive: var(--meme-red);
-  --destructive-foreground: white;
-  --border: var(--glass-border);
-  --input: var(--dark-surface-light);
-  --ring: var(--meme-purple);
+  /* Pixar-style soft edge radius */
+  --radius: 0.75rem;
+
+  /* BullRhun Light Theme - Natural Colors (hex divisible by 3) */
+  --background: #FFFCF9; /* Warm white */
+  --foreground: #333333; /* Dark gray */
+
+  --card: #FFFFFF; /* Pure white */
+  --card-foreground: #333333;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #333333;
+
+  /* Primary - Deep green (earthy finance) - overridden by custom theme */
+  --primary: #669933;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - Muted gold - overridden by custom theme */
+  --secondary: #CC9933;
+  --secondary-foreground: #333333;
+
+  /* Accent - Clay/sand - overridden by custom theme */
+  --accent: #996633;
+  --accent-foreground: #FFFFFF;
+
+  /* Neutral tones */
+  --muted: #F0E6D6; /* Light clay */
+  --muted-foreground: #666666;
+
+  /* Crypto trading colors */
+  --crypto-up: #669933;   /* Green for gains */
+  --crypto-down: #CC6666; /* Red for losses */
+  --crypto-neutral: #999966;
+
+  /* Destructive - Natural coral */
+  --destructive: #CC6666;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E6E6E6;
+  --input: #E6E6E6;
+  --ring: #669933;
+
+  /* Chart colors */
+  --chart-1: #669933;
+  --chart-2: #CC9933;
+  --chart-3: #996633;
+  --chart-4: #666699;
+  --chart-5: #996666;
+
+  /* Sidebar colors */
+  --sidebar: #F9F4EC;
+  --sidebar-foreground: #333333;
+  --sidebar-primary: #669933;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F0E6D6;
+  --sidebar-accent-foreground: #333333;
+  --sidebar-border: #E6E6E6;
+  --sidebar-ring: #669933;
 }
 
 .dark {
-  --background: var(--dark-bg);
-  --foreground: #f3f4f6;
-  --card: var(--dark-surface);
-  --card-foreground: #f3f4f6;
-  --popover: var(--dark-surface);
-  --popover-foreground: #f3f4f6;
-  --primary: var(--meme-purple);
-  --primary-foreground: white;
-  --secondary: var(--dark-surface-light);
-  --secondary-foreground: #d1d5db;
-  --muted: var(--dark-surface-light);
-  --muted-foreground: #9ca3af;
-  --accent: var(--meme-orange);
-  --accent-foreground: white;
-  --destructive: var(--meme-red);
-  --destructive-foreground: white;
-  --border: var(--glass-border);
-  --input: var(--dark-surface-light);
-  --ring: var(--meme-purple);
+  /* BullRhun Dark Theme */
+  --background: #1A1918; /* Dark clay */
+  --foreground: #F0E6D6;
+
+  --card: #262523;
+  --card-foreground: #F0E6D6;
+
+  --popover: #262523;
+  --popover-foreground: #F0E6D6;
+
+  /* Darker versions of theme colors */
+  --primary: #55882B;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #A37A28;
+  --secondary-foreground: #F0E6D6;
+
+  --accent: #7A5226;
+  --accent-foreground: #F0E6D6;
+
+  --muted: #332F2A;
+  --muted-foreground: #999999;
+
+  --destructive: #A35252;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #332F2A;
+  --input: #332F2A;
+  --ring: #55882B;
+
+  --chart-1: #55882B;
+  --chart-2: #A37A28;
+  --chart-3: #7A5226;
+  --chart-4: #555588;
+  --chart-5: #8A5555;
+
+  --sidebar: #262523;
+  --sidebar-foreground: #F0E6D6;
+  --sidebar-primary: #55882B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #332F2A;
+  --sidebar-accent-foreground: #F0E6D6;
+  --sidebar-border: #332F2A;
+  --sidebar-ring: #55882B;
 }
 
 @layer base {
@@ -150,437 +164,431 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-body), system-ui, sans-serif;
-    background: var(--gradient-bg);
-    overflow-x: hidden;
   }
-  
-  /* Crypto Trading Typography */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.025em;
+
+  /* Font families */
+  .font-sans {
+    font-family: var(--font-sans);
   }
-  
-  h1 { 
-    font-size: 3rem; 
-    line-height: 1.05; 
-    font-weight: 800;
-    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+
+  .font-display {
+    font-family: var(--font-display);
   }
-  h2 { 
-    font-size: 2.25rem; 
-    line-height: 1.1; 
-    font-weight: 750;
+
+  .font-brand {
+    font-family: var(--font-brand);
   }
-  h3 { 
-    font-size: 1.875rem; 
-    line-height: 1.2; 
-    font-weight: 700;
+
+  /* Golden Ratio spacing utilities */
+  /* 8px (base) */
+  .gap-golden-sm {
+    gap: 0.5rem;
   }
-  h4 { 
-    font-size: 1.5rem; 
-    line-height: 1.25; 
-    font-weight: 600;
+  .p-golden-sm {
+    padding: 0.5rem;
   }
-  h5 { 
-    font-size: 1.25rem; 
-    line-height: 1.3; 
-    font-weight: 600;
+
+  /* 13px (8 * φ) */
+  .gap-golden {
+    gap: 0.8125rem;
   }
-  h6 { 
-    font-size: 1rem; 
-    line-height: 1.4; 
-    font-weight: 500;
+  .p-golden {
+    padding: 0.8125rem;
   }
-  
-  /* Hide scrollbars on mobile */
-  @media (max-width: 768px) {
-    *::-webkit-scrollbar {
-      display: none;
-    }
-    
-    * {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    
-    html, body {
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
+
+  /* 21px (8 * φ²) */
+  .gap-golden-lg {
+    gap: 1.3125rem;
+  }
+  .p-golden-lg {
+    padding: 1.3125rem;
+  }
+
+  /* 34px (8 * φ³) */
+  .gap-golden-xl {
+    gap: 2.125rem;
+  }
+  .p-golden-xl {
+    padding: 2.125rem;
+  }
+
+  /* 55px (8 * φ⁴) */
+  .gap-golden-2xl {
+    gap: 3.4375rem;
+  }
+  .p-golden-2xl {
+    padding: 3.4375rem;
   }
 }
 
-@layer components {
-  /* Crypto Trading Text Styles */
-  .crypto-number {
-    font-family: var(--font-mono), 'SF Mono', 'JetBrains Mono', monospace;
-    font-weight: 600;
-    letter-spacing: 0.025em;
-    tabular-nums: all;
-  }
-  
-  .crypto-text {
-    font-family: var(--font-body), 'Inter', 'SF Pro Display', sans-serif;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    line-height: 1.4;
-  }
-  
-  .crypto-title {
-    font-family: var(--font-display), var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    text-transform: uppercase;
-  }
-  
-  .crypto-gaming {
-    font-family: var(--font-fun), var(--font-press-start), 'Press Start 2P', monospace;
-    font-weight: 400;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  /* Glassmorphism Components */
-  .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: 1rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-  }
-  
-  .glass-button {
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--glass-border);
-    border-radius: 0.75rem;
-    transition: all var(--transition-normal);
-  }
-  
-  .glass-button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-  }
-  
-  .glass-header {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--glass-border);
-  }
-  
-  /* Neon Buttons */
-  .btn-neon-purple {
-    background: var(--gradient-purple);
-    color: white;
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
-    padding: var(--spacing-md) var(--spacing-xl);
-    border-radius: var(--radius-lg);
-    transition: all var(--transition-normal);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-  }
-  
-  .btn-neon-purple:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 8px 30px rgba(139, 92, 246, 0.6);
-  }
-  
-  .btn-neon-blue {
-    background: var(--gradient-blue);
-    color: white;
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
-    padding: var(--spacing-md) var(--spacing-xl);
-    border-radius: var(--radius-lg);
-    transition: all var(--transition-normal);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
-  }
-  
-  .btn-neon-green {
-    background: var(--gradient-green);
-    color: white;
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
-    padding: var(--spacing-md) var(--spacing-xl);
-    border-radius: var(--radius-lg);
-    transition: all var(--transition-normal);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-  }
-  
-  /* Product Cards */
-  .meme-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    transition: all var(--transition-normal);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .meme-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    transition: left 0.5s;
-  }
-  
-  .meme-card:hover::before {
-    left: 100%;
-  }
-  
-  .meme-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    border-color: var(--meme-purple);
-  }
-  
-  /* Category Cards */
-  .category-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    text-align: center;
-    transition: all var(--transition-normal);
-    cursor: pointer;
-  }
-  
-  .category-card:hover {
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 16px 32px rgba(139, 92, 246, 0.3);
-    border-color: var(--meme-purple);
-  }
-  
-  /* Text Gradients */
-  .text-meme-gradient {
-    background: var(--gradient-rainbow);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-  
-  .text-purple-gradient {
-    background: var(--gradient-purple);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-  
-  .text-blue-gradient {
-    background: var(--gradient-blue);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-  
-  /* Price Display */
-  .price-meme {
-    color: var(--meme-green);
-    font-family: var(--font-mono), monospace;
-    font-weight: 700;
-    font-size: 1.25rem;
-  }
-  
-  .price-meme-large {
-    font-size: 1.5rem;
-    color: var(--meme-yellow);
-  }
-  
-  /* Badges */
-  .badge-meme {
-    background: var(--gradient-purple);
-    color: white;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 700;
-    font-family: var(--font-display), system-ui, sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .badge-hot {
-    background: var(--gradient-orange);
-    color: white;
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-  
-  .badge-trending {
-    background: var(--gradient-green);
-    color: white;
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-  
-  /* Ticker */
-  .ticker-container {
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  
-  .ticker-content {
-    display: inline-flex;
-    animation: scroll-left 30s linear infinite;
-    padding-left: 100%;
-  }
-  
-  .ticker-content.paused {
-    animation-play-state: paused;
-  }
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@layer utilities {
-  /* Meme Backgrounds */
-  .bg-meme-dark {
-    background: var(--gradient-bg);
-  }
-  
-  .bg-glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-  }
-  
-  /* Meme Text Colors */
-  .text-meme-purple { color: var(--meme-purple); }
-  .text-meme-blue { color: var(--meme-blue); }
-  .text-meme-green { color: var(--meme-green); }
-  .text-meme-orange { color: var(--meme-orange); }
-  .text-meme-pink { color: var(--meme-pink); }
-  .text-meme-yellow { color: var(--meme-yellow); }
-  
-  /* Meme Gradients */
-  .bg-gradient-purple { background: var(--gradient-purple); }
-  .bg-gradient-blue { background: var(--gradient-blue); }
-  .bg-gradient-green { background: var(--gradient-green); }
-  .bg-gradient-orange { background: var(--gradient-orange); }
-  .bg-gradient-pink { background: var(--gradient-pink); }
-  .bg-gradient-rainbow { background: var(--gradient-rainbow); }
-  
-  /* Interactive Effects */
-  .hover-lift:hover {
-    transform: translateY(-4px) scale(1.05);
-    transition: all var(--transition-normal);
-  }
-  
-  .hover-glow:hover {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
-    transition: all var(--transition-normal);
-  }
-  
-  /* Mobile Optimizations */
-  .mobile-safe-area {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-  
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  /* Enhanced Mobile Scrolling */
-  html {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Better focus for mobile */
-  *:focus {
-    outline: 2px solid var(--meme-purple);
-    outline-offset: 2px;
-  }
-  
-  /* Loading animations */
-  .animate-slideIn {
-    animation: slideInUp 0.3s ease-out;
-  }
-  
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Animations */
-@keyframes scroll-left {
+::-webkit-scrollbar-thumb {
+  background: #CCCCCC;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #555555;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #777777;
+}
+
+/* Crypto-inspired grid pattern */
+.crypto-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: center center;
+}
+
+/* Subtle trading chart pattern */
+.trading-pattern {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(102, 153, 51, 0.03) 10px,
+      rgba(102, 153, 51, 0.03) 20px
+    );
+}
+
+/* Monospace font for crypto/technical elements */
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Crypto ticker animation */
+@keyframes ticker {
   0% {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%);
   }
 }
 
-@keyframes pulse-glow {
+.crypto-ticker {
+  animation: ticker 30s linear infinite;
+}
+
+/* Subtle pulse for live indicators */
+@keyframes pulse-subtle {
   0%, 100% {
     opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Tech-inspired corner accent */
+.tech-corner {
+  position: relative;
+}
+
+.tech-corner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+}
+
+.tech-corner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+}
+
+/* Crypto rarity badge styles */
+.rarity-common {
+  background-color: #999999;
+}
+
+.rarity-uncommon {
+  background-color: #669933;
+}
+
+.rarity-rare {
+  background-color: #9966CC;
+}
+
+.rarity-legendary {
+  background: linear-gradient(135deg, #CC9933, #FFCC33);
+}
+
+/* Price change indicator */
+.price-up {
+  color: var(--crypto-up);
+}
+
+.price-down {
+  color: var(--crypto-down);
+}
+
+/* Card hover effect with subtle scale */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Pixar-inspired futuristic elements */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Soft depth for cards */
+.soft-depth {
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* Playful scale animation */
+@keyframes playful-bounce {
+  0%, 100% {
     transform: scale(1);
   }
   50% {
-    opacity: 0.8;
     transform: scale(1.05);
   }
 }
 
-@keyframes bounce {
+.playful-bounce:hover {
+  animation: playful-bounce 0.4s ease-in-out;
+}
+
+/* Pixar-futuristic specific animations */
+@keyframes animate-gradient-shift {
   0%, 100% {
-    transform: translateY(0) scale(1);
+    background-position: 0% 50%;
   }
   50% {
-    transform: translateY(-5px) scale(1.1);
+    background-position: 100% 50%;
   }
 }
 
-/* Responsive Mobile First */
-@media (min-width: 768px) {
-  .grid-responsive {
-    grid-template-columns: repeat(2, 1fr);
+.animate-gradient-shift {
+  background-size: 200% auto;
+  animation: animate-gradient-shift 3s ease infinite;
+}
+
+@keyframes bounce-slight {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
   }
 }
 
-@media (min-width: 1024px) {
-  .grid-responsive {
-    grid-template-columns: repeat(4, 1fr);
+.animate-bounce-slight {
+  animation: bounce-slight 2s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  66% {
+    transform: translateY(10px) translateX(-10px);
   }
 }
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Card hover enhancements */
+.card-futuristic {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.card-futuristic:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Button futuristic hover */
+.button-futuristic {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.button-futuristic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.button-futuristic:hover::before {
+  transform: translateX(100%);
+}
+
+/* Modal backdrop blur */
+.modal-backdrop-futuristic {
+  backdrop-filter: blur(12px) saturate(180%);
+}
+
+/* Notice animation */
+@keyframes slide-down {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out;
+}
+
+/* Icon container glow */
+.icon-glow {
+  position: relative;
+}
+
+.icon-glow::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(8px);
+  opacity: 0.4;
+  z-index: -1;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(102, 153, 51, 0.2) 50%,
+    transparent 100%
+  );
+}
+

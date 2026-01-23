@@ -3,7 +3,6 @@ import { supabaseService } from '@/lib/supabase';
 import { encryptionService } from '@/lib/encryption';
 import { getConnection } from '@/lib/solana';
 import { Keypair, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import bs58 from 'bs58';
 
 // Platform wallet addresses from environment variables
 const WALLET_PLATFORM = process.env.WALLET_PLATFORM;
@@ -148,6 +147,8 @@ export async function POST(request: NextRequest) {
       .from('bullrhun_orders')
       .update({
         status: 'paid',
+        solana_payment_signature: signature,
+        payment_confirmed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId);

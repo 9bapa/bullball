@@ -9,11 +9,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
     }
 
+    // Normalize wallet address to lowercase
+    const normalizedWalletAddress = wallet_address.toLowerCase()
+
     // Check if user already exists
     const { data: existingUser } = await supabaseService
       .from('bullrhun_users')
       .select('id, username, role, avatar_url')
-      .eq('wallet_address', wallet_address.toLowerCase())
+      .eq('wallet_address', normalizedWalletAddress)
       .single()
 
     if (existingUser) {
@@ -24,7 +27,7 @@ export async function POST(request: NextRequest) {
     const { data: newUser, error } = await supabaseService
       .from('bullrhun_users')
       .insert({
-        wallet_address,
+        wallet_address: normalizedWalletAddress,
         role: 'customer',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

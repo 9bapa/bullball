@@ -6,8 +6,14 @@ import { useWallet } from '@solana/wallet-adapter-react'
 interface User {
   id?: string
   username: string
+  display_name: string
+  email?: string
+  phone?: string
+  bio?: string
   avatar_url: string
   role: 'customer' | 'admin' | 'super_admin'
+  points?: number
+  redemptions?: number
   created_at?: string
   updated_at?: string
 }
@@ -29,6 +35,11 @@ export function useUserContext() {
     throw new Error('useUserContext must be used within a UserProvider')
   }
   return context
+}
+
+export function getShortAddress(address: string | null): string {
+  if (!address) return '';
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
@@ -83,8 +94,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   
   const user: User | null = dbUser ? {
     username: dbUser.username || 'none set',
+    display_name: dbUser.display_name || dbUser.username,
     avatar_url: dbUser.avatar_url || '/avatar.jpg',
     role: dbUser.role,
+    points: dbUser.points || 0,
+    redemptions: dbUser.redemptions || 0,
   } : null
   
   const contextValue: UserContextType = {

@@ -59,14 +59,36 @@ z-ai video -p "Fireworks display" --duration 10 --poll
 
 ### Image-to-Video
 
+**IMPORTANT**: For `image_url` parameter, it is **strongly recommended to use base64-encoded image data** instead of URLs. This approach is more reliable and avoids potential network issues or access restrictions.
+
+**Note**: Match the MIME type in the data URI to your actual image format (image/jpeg, image/png, image/webp, etc.) to avoid decoding issues.
+
 ```bash
-# Generate video from single image
+# Generate video from single image using base64 (RECOMMENDED)
+# Convert your image to base64 with correct MIME type
+
+# For PNG images
+IMAGE_BASE64=$(base64 -i image.png)
 z-ai video \
-  --image-url "https://example.com/image.png" \
+  --image-url "data:image/png;base64,${IMAGE_BASE64}" \
   --prompt "Make the scene come alive" \
   --poll
 
-# Using short option
+# For JPEG images
+IMAGE_BASE64=$(base64 -i photo.jpg)
+z-ai video \
+  --image-url "data:image/jpeg;base64,${IMAGE_BASE64}" \
+  --prompt "Make the scene come alive" \
+  --poll
+
+# For WebP images
+IMAGE_BASE64=$(base64 -i image.webp)
+z-ai video \
+  --image-url "data:image/webp;base64,${IMAGE_BASE64}" \
+  --prompt "Make the scene come alive" \
+  --poll
+
+# Using URL (less recommended, may have reliability issues)
 z-ai video \
   -i "https://example.com/photo.jpg" \
   -p "Add motion to this scene" \
@@ -75,8 +97,29 @@ z-ai video \
 
 ### First-Last Frame Mode
 
+**IMPORTANT**: For best reliability, use base64-encoded images instead of URLs. Ensure the MIME type matches your actual image format.
+
 ```bash
-# Generate video between two frames
+# Generate video between two frames using base64 (RECOMMENDED)
+# Make sure to use the correct MIME type for each image
+
+# Example with PNG images
+START_BASE64=$(base64 -i start.png)
+END_BASE64=$(base64 -i end.png)
+z-ai video \
+  --image-url "data:image/png;base64,${START_BASE64},data:image/png;base64,${END_BASE64}" \
+  --prompt "Smooth transition between frames" \
+  --poll
+
+# Example with JPEG images
+START_BASE64=$(base64 -i start.jpg)
+END_BASE64=$(base64 -i end.jpg)
+z-ai video \
+  --image-url "data:image/jpeg;base64,${START_BASE64},data:image/jpeg;base64,${END_BASE64}" \
+  --prompt "Smooth transition between frames" \
+  --poll
+
+# Using URLs (less recommended)
 z-ai video \
   --image-url "https://example.com/start.png,https://example.com/end.png" \
   --prompt "Smooth transition between frames" \
@@ -120,7 +163,7 @@ z-ai video -p "Abstract art animation" -o task.json
 ### CLI Parameters
 
 - `--prompt, -p <text>`: Optional - Text description of the video
-- `--image-url, -i <URL>`: Optional - Image URL (single or comma-separated pair)
+- `--image-url, -i <data>`: Optional - **Preferably base64-encoded image data** (e.g., "data:image/png;base64,iVBORw..."). URLs are also supported but less recommended. For two images, use comma-separated values.
 - `--quality, -q <mode>`: Optional - Output mode: `speed` or `quality` (default: speed)
 - `--with-audio`: Optional - Generate AI audio effects (default: false)
 - `--size, -s <resolution>`: Optional - Video resolution (e.g., "1920x1080")
@@ -235,15 +278,40 @@ console.log('Generated video:', videoUrl);
 
 ### Image-to-Video Generation
 
+**IMPORTANT**: The `image_url` parameter accepts both base64-encoded image data and URLs, but **base64 encoding is strongly recommended** for better reliability and to avoid network-related issues.
+
+**Critical**: Always match the MIME type in your base64 data URI to the actual image format to prevent decoding errors.
+
 ```javascript
 import ZAI from 'z-ai-web-dev-sdk';
+import fs from 'fs';
+import path from 'path';
 
-async function generateVideoFromImage(imageUrl, prompt) {
+// Helper function to detect MIME type from file extension
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp'
+  };
+  return mimeTypes[ext] || 'image/jpeg'; // Default to JPEG if unknown
+}
+
+async function generateVideoFromImage(imagePath, prompt) {
   const zai = await ZAI.create();
 
-  // Single image as starting frame
+  // Method 1: Using base64-encoded image (RECOMMENDED)
+  // Automatically detect MIME type from file extension
+  const imageBuffer = fs.readFileSync(imagePath);
+  const mimeType = getMimeType(imagePath);
+  const base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+
   const task = await zai.video.generations.create({
-    image_url: imageUrl,
+    image_url: base64Image,  // Base64 data string with correct MIME type
     prompt: prompt,
     quality: 'quality',
     duration: 5,
@@ -253,24 +321,77 @@ async function generateVideoFromImage(imageUrl, prompt) {
   return task;
 }
 
-// Usage
-const task = await generateVideoFromImage(
-  'https://example.com/image.jpg',
+// Method 2: Using URL (less recommended)
+async function generateVideoFromImageUrl(imageUrl, prompt) {
+  const zai = await ZAI.create();
+
+  const task = await zai.video.generations.create({
+    image_url: imageUrl,  // URL string
+    prompt: prompt,
+    quality: 'quality',
+    duration: 5,
+    fps: 30
+  });
+
+  return task;
+}
+
+// Usage examples
+const task1 = await generateVideoFromImage(
+  './images/photo.jpg',  // Works with JPEG
   'Animate this scene with gentle motion'
+);
+
+const task2 = await generateVideoFromImage(
+  './images/graphic.png',  // Works with PNG
+  'Add dynamic movement'
+);
+
+const task3 = await generateVideoFromImage(
+  './images/animation.webp',  // Works with WebP
+  'Bring this to life'
 );
 ```
 
 ### Image-to-Video with Start and End Frames
 
+**IMPORTANT**: For keyframe mode, base64-encoded images are **highly recommended** over URLs to ensure consistent and reliable video generation. Always use the correct MIME type for each image.
+
 ```javascript
 import ZAI from 'z-ai-web-dev-sdk';
+import fs from 'fs';
+import path from 'path';
 
-async function generateVideoWithKeyframes(startImageUrl, endImageUrl, prompt) {
+// Helper function to detect MIME type from file extension
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp'
+  };
+  return mimeTypes[ext] || 'image/jpeg';
+}
+
+async function generateVideoWithKeyframes(startImagePath, endImagePath, prompt) {
   const zai = await ZAI.create();
 
-  // Two images for start and end frames
+  // Method 1: Using base64-encoded images (RECOMMENDED)
+  // Automatically detect MIME type for each image
+  const startBuffer = fs.readFileSync(startImagePath);
+  const endBuffer = fs.readFileSync(endImagePath);
+  
+  const startMimeType = getMimeType(startImagePath);
+  const endMimeType = getMimeType(endImagePath);
+  
+  const startBase64 = `data:${startMimeType};base64,${startBuffer.toString('base64')}`;
+  const endBase64 = `data:${endMimeType};base64,${endBuffer.toString('base64')}`;
+
   const task = await zai.video.generations.create({
-    image_url: [startImageUrl, endImageUrl],
+    image_url: [startBase64, endBase64],  // Array of base64 strings with correct MIME types
     prompt: prompt,
     quality: 'quality',
     duration: 10,
@@ -281,11 +402,33 @@ async function generateVideoWithKeyframes(startImageUrl, endImageUrl, prompt) {
   return task;
 }
 
-// Usage
-const task = await generateVideoWithKeyframes(
-  'https://example.com/start.jpg',
-  'https://example.com/end.jpg',
+// Method 2: Using URLs (less recommended)
+async function generateVideoWithKeyframesUrl(startImageUrl, endImageUrl, prompt) {
+  const zai = await ZAI.create();
+
+  const task = await zai.video.generations.create({
+    image_url: [startImageUrl, endImageUrl],  // Array of URL strings
+    prompt: prompt,
+    quality: 'quality',
+    duration: 10,
+    fps: 30
+  });
+
+  console.log('Task created with keyframes:', task.id);
+  return task;
+}
+
+// Usage examples with different formats
+const task1 = await generateVideoWithKeyframes(
+  './frames/start.jpg',  // JPEG start frame
+  './frames/end.jpg',    // JPEG end frame
   'Smooth transition between these scenes'
+);
+
+const task2 = await generateVideoWithKeyframes(
+  './frames/start.png',  // PNG start frame
+  './frames/end.webp',   // WebP end frame - different formats work!
+  'Morphing effect between images'
 );
 ```
 
@@ -761,9 +904,12 @@ app.post('/api/video/create', async (req, res) => {
       });
     }
 
+    // Note: image_url should preferably be base64-encoded image data
+    // Format: "data:image/jpeg;base64,..." or array of such strings
+    // URLs are also supported but less recommended
     const task = await zaiInstance.video.generations.create({
       prompt,
-      image_url,
+      image_url,  // Accepts base64 data or URL
       quality: quality || 'speed',
       duration: duration || 5,
       fps: 30
