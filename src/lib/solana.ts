@@ -11,14 +11,26 @@ export const getTokenInfo = async (mint: string) => {
   }
 }
 
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY
+const SOLANA_RPC_ENDPOINT = process.env.SOLANA_RPC_ENDPOINT
+
 export const getConnection = () => {
+  // Prefer Helius for better rate limits and reliability
+  if (HELIUS_API_KEY) {
+    const heliusEndpoint = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+    console.log('Using Helius endpoint:', heliusEndpoint.replace(HELIUS_API_KEY, '***'))
+    return new Connection(heliusEndpoint, 'confirmed')
+  }
+  
   // Skip initialization during build time (when env vars might not be available)
-  if (!process.env.SOLANA_RPC_ENDPOINT && typeof window === 'undefined') {
+  if (!SOLANA_RPC_ENDPOINT && typeof window === 'undefined') {
     // During build time, return a mock connection
+    console.log('Using public fallback endpoint during build')
     return new Connection('https://api.mainnet-beta.solana.com', 'confirmed')
   }
   
-  const endpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
+  const endpoint = SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
+  console.log('Using configured endpoint:', endpoint)
   return new Connection(endpoint, 'confirmed')
 }
 
@@ -57,9 +69,15 @@ export const sendEncodedTransaction = async (encoded: Uint8Array) => {
 
 export const getBalance = async (publicKey: string) => {
   const connection = getConnection()
+  console.log('getBalance RPC endpoint:', connection.rpcEndpoint)
   const pubkey = new PublicKey(publicKey)
-  const balance = await connection.getBalance(pubkey)
-  return balance / LAMPORTS_PER_SOL
+  try {
+    const balance = await connection.getBalance(pubkey)
+    return balance / LAMPORTS_PER_SOL
+  } catch (error) {
+    console.error('getBalance error for', publicKey, ':', error instanceof Error ? error.message : error)
+    throw error
+  }
 }
 
 export const getTokenBalance = async (mint: string, owner: string) => {
@@ -276,9 +294,9 @@ const buyTokenWithPumpPortal = async ({ mint, amount, denominatedInSol = true, s
   }
 
   const getGraduationStatus = async (mint: string) => {
-    const { supabaseAdmin } = await import('./supabase')
-    if (supabaseAdmin) {
-      const { data } = await supabaseAdmin.from('bullrhun_tokens').select('is_graduated').eq('mint', mint).maybeSingle()
+    const { supabaseService } = await import('./supabase')
+    if (supabaseService) {
+      const { data } = await supabaseService.from('bullrhun_tokens').select('is_graduated').eq('mint', mint).maybeSingle()
       return !!data?.is_graduated
     }
     return false
