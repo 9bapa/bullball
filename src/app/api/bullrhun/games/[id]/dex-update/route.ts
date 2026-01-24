@@ -71,8 +71,8 @@ export async function POST(
         liquidity_usd: dexPair.liquidity?.usd || 0,
         marketcap_usd: dexPair.marketCap || 0,
         fdv_usd: dexPair.fdv || 0,
-        websites: dexPair.info?.websites || [],
-        socials: dexPair.info?.socials || [],
+        websites: JSON.stringify(dexPair.info?.websites || []),
+        socials: JSON.stringify(dexPair.info?.socials || []),
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId)

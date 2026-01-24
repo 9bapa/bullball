@@ -70,11 +70,9 @@ const { connected, publicKey, user } = useUserContext()
               <Search className="h-5 w-5" />
             </Button>
             {!connected? (
-              <div className="hidden md:block">
-                    <WalletModalButton className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/10">
-                      <Wallet className="h-6 w-6" />
-                    </WalletModalButton>
-              </div>
+              <WalletModalButton className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/10">
+                <Wallet className="h-6 w-6" />
+              </WalletModalButton>
             ) : (
               <p className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors relative group">
                 {`${publicKey?.slice(0, 4)}...${publicKey?.slice(-4)}`}

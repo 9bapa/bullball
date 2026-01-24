@@ -31,7 +31,18 @@ export async function GET(request: Request) {
         game_wallet_address,
         game_wallet_balance,
         status,
-        created_at
+        created_at,
+        pair_address,
+        dex_id,
+        price_usd,
+        volume_usd,
+        price_change_24h,
+        liquidity_usd,
+        marketcap_usd,
+        fdv_usd,
+        websites,
+        socials,
+        updated_at
       `)
       .order('game_wallet_balance', { ascending: false });
 
@@ -128,8 +139,8 @@ export async function POST(request: NextRequest) {
         liquidity_usd: dexPair?.liquidity?.usd || null,
         marketcap_usd: dexPair?.marketCap || null,
         fdv_usd: dexPair?.fdv || null,
-        websites: dexPair?.info?.websites || [],
-        socials: dexPair?.info?.socials || [],
+        websites: JSON.stringify(dexPair?.info?.websites || []),
+        socials: JSON.stringify(dexPair?.info?.socials || []),
       })
       .select()
       .single();

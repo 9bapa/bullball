@@ -292,8 +292,19 @@ export default function SwapPage() {
       const response = await fetch('/api/bullrhun/games')
       const data = await response.json()
       if (data.games) {
-        setGames(data.games)
-        return data.games
+        const transformedGames = data.games.map((game: any) => ({
+          ...game,
+          price_usd: game.price_usd !== null && game.price_usd !== undefined ? Number(game.price_usd) : undefined,
+          volume_usd: game.volume_usd !== null && game.volume_usd !== undefined ? Number(game.volume_usd) : undefined,
+          price_change_24h: game.price_change_24h !== null && game.price_change_24h !== undefined ? Number(game.price_change_24h) : undefined,
+          liquidity_usd: game.liquidity_usd !== null && game.liquidity_usd !== undefined ? Number(game.liquidity_usd) : undefined,
+          marketcap_usd: game.marketcap_usd !== null && game.marketcap_usd !== undefined ? Number(game.marketcap_usd) : undefined,
+          fdv_usd: game.fdv_usd !== null && game.fdv_usd !== undefined ? Number(game.fdv_usd) : undefined,
+          websites: game.websites && typeof game.websites === 'string' ? JSON.parse(game.websites) : game.websites,
+          socials: game.socials && typeof game.socials === 'string' ? JSON.parse(game.socials) : game.socials
+        }))
+        setGames(transformedGames)
+        return transformedGames
       }
       return null
     } catch (error) {
@@ -1298,16 +1309,20 @@ export default function SwapPage() {
                       (() => {
                         const gameDetails = games.find(g => g.token_mint === toToken.mint)
                         
-                        if (!gameDetails || !gameDetails.pair_address) {
+                        const hasPricingData = gameDetails && (
+                          gameDetails.price_usd !== null && gameDetails.marketcap_usd !== null
+                        )
+                        
+                        if (!gameDetails || !hasPricingData) {
                           return (
                             <Card className="border-primary/10 bg-gradient-to-br from-primary/5 via-purple-500/5 to-accent/5">
-                              <CardContent className="p-6">
-                                <div className="text-center">
-                                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-600 mb-4">
-                                    <Flame className="h-8 w-8 text-white" />
+                              <CardContent className="p-6 sm:p-8">
+                                <div className="text-center space-y-4">
+                                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-purple-600 mb-4">
+                                    <Flame className="h-10 w-10 text-white" />
                                   </div>
-                                  <h3 className="text-xl font-bold mb-2">No Pricing Data Available</h3>
-                                  <p className="text-muted-foreground max-w-md mx-auto">
+                                  <h3 className="text-xl sm:text-2xl font-bold">No Pricing Data Available</h3>
+                                  <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base">
                                     Pricing data will be displayed here once available for this token.
                                   </p>
                                 </div>
@@ -1318,187 +1333,157 @@ export default function SwapPage() {
 
                         const priceChange = gameDetails.price_change_24h || 0
                         const isPositive = priceChange >= 0
+                        const websites = gameDetails.websites || []
+                        const socials = gameDetails.socials || []
 
                         return (
                           <Card className="border-primary/10">
-                            <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-xl flex items-center gap-2">
-                                  <Coins className="h-6 w-6 text-primary" />
+                            <CardHeader className="pb-3 px-4 sm:px-6">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                  <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                                   Token Pricing
                                 </CardTitle>
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs self-start sm:self-center">
                                   {gameDetails.dex_id?.toUpperCase() || 'DEX'}
                                 </Badge>
                               </div>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                                  <CardHeader>
-                                    <CardTitle className="text-base">Current Price</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                        <p className="text-3xl font-bold text-primary mb-1">
-                                          {formatCurrency(gameDetails.price_usd ?? 0)}
-                                        </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {dexPrice && dexPrice.priceUsd ? `${Number(dexPrice.priceUsd).toFixed(6)} SOL` : 'Loading...'}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
+                            <CardContent className="px-4 sm:px-6 pb-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-center">
+                                <div className="p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/10">
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5">Price</p>
+                                  <p className="text-sm sm:text-base font-semibold text-primary">
+                                    ${dexPrice && dexPrice.priceUsd ? `${Number(dexPrice.priceUsd).toFixed(6)} SOL` : 'Loading...'}
 
-                                <Card className={`bg-gradient-to-br ${isPositive ? 'from-green-500/10 to-green-600/5' : 'from-red-500/10 to-red-600/5'} border ${isPositive ? 'border-green-200/50 dark:border-green-800/50' : 'border-red-200/50 dark:border-red-800/50'}`}>
-                                  <CardHeader>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                      24h Change
-                                      {isPositive ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                      <p className={`text-3xl font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                        {isPositive ? '+' : ''}{priceChange.toFixed(2)}%
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-200/50 dark:border-blue-800/50">
-                                  <CardHeader>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                      <BarChart className="h-5 w-5 text-blue-600" />
-                                      24h Volume
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                      <p className="text-3xl font-bold text-blue-600">
-                                        {formatLargeNumber(gameDetails.volume_usd ?? 0)}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-
-                                <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-200/50 dark:border-purple-800/50">
-                                  <CardHeader>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                      <Droplet className="h-5 w-5 text-purple-600" />
-                                      Liquidity
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                      <p className="text-3xl font-bold text-purple-600">
-                                        {formatLargeNumber(gameDetails.liquidity_usd || 0)}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-200/50 dark:border-amber-800/50">
-                                  <CardHeader>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                      <PieChart className="h-5 w-5 text-amber-600" />
-                                      Market Cap
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                      <p className="text-3xl font-bold text-amber-600">
-                                        {formatLargeNumber(gameDetails.marketcap_usd || 0)}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-
-                                <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-200/50 dark:border-emerald-800/50">
-                                  <CardHeader>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                      <Target className="h-5 w-5 text-emerald-600" />
-                                      FDV
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="text-center">
-                                      <p className="text-3xl font-bold text-emerald-600">
-                                        {formatLargeNumber(gameDetails.fdv_usd || 0)}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              </div>
-
-                              {gameDetails.websites && gameDetails.websites.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                    <Globe className="h-4 w-4 text-primary" />
-                                    Websites
-                                  </h4>
-                                  <div className="flex flex-wrap gap-2">
-                                    {gameDetails.websites.map((website, idx) => (
-                                      <a
-                                        key={idx}
-                                        href={website.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-sm hover:bg-primary/20 transition-colors flex items-center gap-1"
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        Website
-                                      </a>
-                                    ))}
-                                  </div>
+                                  </p>
+                                  {/* <p className="text-[10px] text-muted-foreground">
+                                    {formatCurrency(gameDetails.price_usd ?? 0)}
+                                  </p> */}
                                 </div>
-                              )}
 
-                              {gameDetails.socials && gameDetails.socials.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                    <Share2 className="h-4 w-4 text-primary" />
-                                    Social Links
-                                  </h4>
-                                  <div className="flex flex-wrap gap-2">
-                                    {gameDetails.socials.map((social, idx) => (
-                                      <a
-                                        key={idx}
-                                        href={`https://twitter.com/${social.handle}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-sm hover:bg-primary/20 transition-colors flex items-center gap-1"
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        {social.platform}
-                                      </a>
-                                    ))}
-                                  </div>
+                                <div className={`p-2 sm:p-3 text-center rounded-lg border ${isPositive ? 'bg-green-500/5 border-green-200/30 dark:border-green-800/30' : 'bg-red-500/5 border-red-200/30 dark:border-red-800/30'}`}>
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                                    24h Change
+                                    {isPositive ? <TrendingUp className="h-3 w-3 text-green-600" /> : <TrendingDown className="h-3 w-3 text-red-600" />}
+                                  </p>
+                                  <p className={`text-sm sm:text-base font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                                    {isPositive ? '+' : ''}{priceChange.toFixed(2)}%
+                                  </p>
                                 </div>
-                              )}
+
+                                <div className="p-2 sm:p-3 rounded-lg bg-blue-500/5 border border-blue-200/30 dark:border-blue-800/30">
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                                    <BarChart className="h-3 w-3" />
+                                    Volume (24h)
+                                  </p>
+                                  <p className="text-sm sm:text-base font-semibold text-blue-600">
+                                    {formatLargeNumber(gameDetails.volume_usd ?? 0)}
+                                  </p>
+                                </div>
+
+                                <div className="p-2 sm:p-3 rounded-lg bg-purple-500/5 border border-purple-200/30 dark:border-purple-800/30">
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                                    <Droplet className="h-3 w-3" />
+                                    Liquidity
+                                  </p>
+                                  <p className="text-sm sm:text-base font-semibold text-purple-600">
+                                    {formatLargeNumber(gameDetails.liquidity_usd || 0)}
+                                  </p>
+                                </div>
+
+                                <div className="p-2 sm:p-3 rounded-lg bg-amber-500/5 border border-amber-200/30 dark:border-amber-800/30">
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                                    <PieChart className="h-3 w-3" />
+                                    Market Cap
+                                  </p>
+                                  <p className="text-sm sm:text-base font-semibold text-amber-600">
+                                    {formatLargeNumber(gameDetails.marketcap_usd || 0)}
+                                  </p>
+                                </div>
+
+                                <div className="p-2 sm:p-3 rounded-lg bg-emerald-500/5 border border-emerald-200/30 dark:border-emerald-800/30">
+                                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                                    <Target className="h-3 w-3" />
+                                    FDV
+                                  </p>
+                                  <p className="text-sm sm:text-base font-semibold text-emerald-600">
+                                    {formatLargeNumber(gameDetails.fdv_usd || 0)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <Separator className="my-3 sm:my-4" />
+
+                              <div className="space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">Websites:</span>
+                                  {websites.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {websites.map((website, idx) => (
+                                        <a
+                                          key={idx}
+                                          href={website.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-[10px] sm:text-xs hover:bg-primary/20 transition-colors flex items-center gap-1"
+                                        >
+                                          <ExternalLink className="h-2.5 w-2.5" />
+                                          Website
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-[10px] sm:text-xs">N/A</Badge>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Share2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">Socials:</span>
+                                  {socials.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {socials.map((social, idx) => (
+                                        <a
+                                          key={idx}
+                                          href={`https://twitter.com/${social.handle}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-[10px] sm:text-xs hover:bg-primary/20 transition-colors flex items-center gap-1"
+                                        >
+                                          <ExternalLink className="h-2.5 w-2.5" />
+                                          {social.platform}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-[10px] sm:text-xs">N/A</Badge>
+                                  )}
+                                </div>
+                              </div>
 
                               {gameDetails.pair_address && (
-                                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/20 border border-primary/10">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">Pair Address:</span>
-                                    <code className="text-xs bg-background px-2 py-1 rounded">
-                                      {gameDetails.pair_address.slice(0, 8)}...{gameDetails.pair_address.slice(-8)}
-                                    </code>
+                                <>
+                                  <Separator className="my-3 sm:my-4" />
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="text-muted-foreground">Pair:</span>
+                                      <code className="text-[10px] sm:text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        {gameDetails.pair_address.slice(0, 6)}...{gameDetails.pair_address.slice(-4)}
+                                      </code>
+                                    </div>
+                                    <a
+                                      href={`https://dexscreener.com/solana/${gameDetails.pair_address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      View on DexScreener
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
                                   </div>
-                                  <a
-                                    href={`https://dexscreener.com/solana/${gameDetails.pair_address}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    View on DexScreener
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </div>
+                                </>
                               )}
                             </CardContent>
                           </Card>
