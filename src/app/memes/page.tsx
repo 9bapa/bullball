@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { useUserContext } from '@/context/userContext'
+import { useToast } from '@/hooks/use-toast'
 import {
   Sparkles,
   Upload,
   X,
-  Share2
+  Share2,
+  AlertCircle
 } from 'lucide-react'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 
@@ -39,6 +41,7 @@ export default function MemesPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
 
   const { connected, publicKey, dbUser } = useUserContext()
+  const { toast } = useToast()
   const canUpload = connected && dbUser?.role === 'super_admin'
 
   useEffect(() => {
@@ -73,6 +76,24 @@ export default function MemesPage() {
       return
     }
 
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+    for (const file of uploadFiles) {
+      const isVideo = file.type.startsWith('video/')
+      const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
+      if (file.size > maxSize) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2)
+        const maxMB = (maxSize / (1024 * 1024)).toFixed(0)
+        toast({
+          title: 'File Too Large',
+          description: `"${file.name}" (${sizeMB}MB) exceeds maximum size of ${maxMB}MB`,
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
     setIsUploading(true)
     setUploadProgress(0)
 
@@ -90,7 +111,7 @@ export default function MemesPage() {
       })
 
       const xhr = new XMLHttpRequest()
-      
+
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100)
@@ -114,6 +135,8 @@ export default function MemesPage() {
             } catch (e) {
               reject(e)
             }
+          } else if (xhr.status === 413) {
+            reject(new Error('File too large. Maximum size: 50MB for videos, 10MB for images'))
           } else {
             reject(new Error(`Upload failed with status ${xhr.status}`))
           }
@@ -128,8 +151,18 @@ export default function MemesPage() {
       setUploadFiles([])
       setUploadProgress(0)
       setIsUploadModalOpen(false)
+      toast({
+        title: 'Upload Successful',
+        description: `Successfully uploaded ${result.memes.length} meme${result.memes.length > 1 ? 's' : ''}`,
+      })
     } catch (error) {
       console.error('Failed to upload memes:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload memes'
+      toast({
+        title: 'Upload Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      })
       setUploadProgress(0)
     } finally {
       setIsUploading(false)
