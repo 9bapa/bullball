@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/components/auth/useAuthStore'
 import { useSolanaWallet } from '@/components/solana/useSolanaWalletUI'
+import { WalletDisconnectButton } from '@solana/wallet-adapter-react-ui'
 
 interface SlideOutMenuProps {
   isOpen: boolean
@@ -102,8 +103,16 @@ export function SlideOutMenu({ isOpen, onClose, cartCount = 0 }: SlideOutMenuPro
               })}
             </nav>
 
+            {/* Disconnect Button */}
+            <div className="p-4 border-t border-border/50">
+              <WalletDisconnectButton className="w-full flex items-center justify-center gap-2 bg-destructive/10 hover:bg-destructive/20 text-destructive font-semibold transition-colors">
+                <LogOut className="h-4 w-4" />
+                Disconnect Wallet
+              </WalletDisconnectButton>
+            </div>
+
             {/* Menu Footer */}
-            <div className="p-6 border-t border-border/50 bg-muted/20">
+            <div className="p-4 border-t border-border/50 bg-muted/20">
               <p className="text-xs text-muted-foreground text-center">
                 BullRhun • Crypto & Trading Merch
               </p>
