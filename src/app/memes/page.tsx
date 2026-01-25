@@ -14,7 +14,10 @@ import {
   Upload,
   X,
   Share2,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Heart,
+  Eye
 } from 'lucide-react'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 
@@ -39,6 +42,8 @@ export default function MemesPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+
+  const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null)
 
   const { connected, publicKey, dbUser } = useUserContext()
   const { toast } = useToast()
@@ -181,6 +186,47 @@ export default function MemesPage() {
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank')
   }
 
+  const handleDeleteMeme = async (meme: Meme) => {
+    if (!dbUser) return
+
+    try {
+      console.log('Deleting meme:', { memeId: meme.id, role: dbUser.role })
+      const response = await fetch('/api/memes/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: meme.id,
+          role: dbUser.role
+        })
+      })
+      console.log('Delete response:', { status: response.status, ok: response.ok })
+
+      if (response.ok) {
+        setMemes(prev => prev.filter(m => m.id !== meme.id))
+        toast({
+          title: 'Meme Deleted',
+          description: 'The meme has been successfully deleted.',
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: 'Delete Failed',
+          description: error.error || 'Failed to delete meme',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Failed to delete meme:', error)
+      toast({
+        title: 'Delete Failed',
+        description: 'An error occurred while deleting meme',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
@@ -248,10 +294,10 @@ export default function MemesPage() {
                 </p>
               </div>
             ) : (
-              <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+              <div className="columns-2 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3">
                 {memes.map((meme) => (
                   <div key={meme.id} className="break-inside-avoid group relative">
-                    <div className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02]">
+                    <div className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02] cursor-pointer">
                       {meme.media_type === 'video' ? (
                         <video
                           src={meme.media_url}
@@ -265,23 +311,40 @@ export default function MemesPage() {
                           alt={meme.title}
                           className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           loading="lazy"
+                          onClick={() => setSelectedMeme(meme)}
                         />
                       )}
                       {meme.is_featured && (
-                        <Badge className="absolute top-3 left-3 bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-0">
+                        <Badge className="absolute top-2 left-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-0 text-[10px] px-2 py-0.5">
                           <Sparkles className="w-3 h-3 mr-1" />
                           Featured
                         </Badge>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-4">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end gap-2 p-3">
                         <Button
                           variant="secondary"
                           size="icon"
-                          onClick={() => handleShareToX(meme)}
-                          className="bg-white/90 hover:bg-white text-black"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleShareToX(meme)
+                          }}
+                          className="bg-white/90 hover:bg-white text-black h-8 w-8"
                         >
-                          <Share2 className="w-5 h-5" />
+                          <Share2 className="w-4 h-4" />
                         </Button>
+                        {canUpload && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteMeme(meme)
+                            }}
+                            className="bg-red-500/90 hover:bg-red-500 text-white h-8 w-8"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -378,6 +441,104 @@ export default function MemesPage() {
               {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meme Detail Modal */}
+      <Dialog open={!!selectedMeme} onOpenChange={(open) => !open && setSelectedMeme(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          {selectedMeme && (
+            <>
+              <div className="relative">
+                {selectedMeme.media_type === 'video' ? (
+                  <video
+                    src={selectedMeme.media_url}
+                    controls
+                    autoPlay
+                    className="w-full max-h-[70vh] object-contain bg-black"
+                  />
+                ) : (
+                  <img
+                    src={selectedMeme.media_url}
+                    alt={selectedMeme.title}
+                    className="w-full max-h-[70vh] object-contain bg-black"
+                  />
+                )}
+                {selectedMeme.is_featured && (
+                  <Badge className="absolute top-4 left-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-0">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Featured
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedMeme(null)}
+                  className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold mb-2">{selectedMeme.title}</h2>
+                    {selectedMeme.description && (
+                      <p className="text-muted-foreground">{selectedMeme.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={() => handleShareToX(selectedMeme)}
+                      className="bg-white/90 hover:bg-white text-black"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </Button>
+                    {canUpload && (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => {
+                          handleDeleteMeme(selectedMeme)
+                          setSelectedMeme(null)
+                        }}
+                        className="bg-red-500/90 hover:bg-red-500 text-white"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {selectedMeme.tags && selectedMeme.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMeme.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <Heart className="w-4 h-4" />
+                    <span>{selectedMeme.likes_count} likes</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Eye className="w-4 h-4" />
+                    <span>{selectedMeme.view_count} views</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <X className="w-4 h-4 rotate-45" />
+                    <span>{new Date(selectedMeme.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
