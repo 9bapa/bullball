@@ -55,7 +55,8 @@ export default function MemesPage() {
         const response = await fetch('/api/memes')
         if (response.ok) {
           const data = await response.json()
-          setMemes(data)
+          const shuffled = [...data].sort(() => Math.random() - 0.5)
+          setMemes(shuffled)
         }
       } catch (error) {
         console.error('Failed to load memes:', error)
