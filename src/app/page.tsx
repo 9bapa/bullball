@@ -39,8 +39,7 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 pb-16 md:pb-0">
         {/* Hero banner with image slider */}
-        <div className="relative bg-[#000] text-[#fff]">
-          {/* Image Slider */}
+        {/* <div className="relative bg-[#000] text-[#fff]">
           <div className="relative w-full h-[200px] md:h-[400px] lg:h-[500px] overflow-hidden">
             <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
               <img
@@ -52,7 +51,6 @@ export default function Home() {
           </div>
           
           
-          {/* Slide indicators */}
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
             <button
               onClick={() => setCurrentSlide(0)}
@@ -69,7 +67,7 @@ export default function Home() {
               aria-label="Go to slide 2"
             />
           </div>
-        </div>
+        </div> */}
         {/* Featured Products */}
         <section>
           <FeaturedProductsSection
